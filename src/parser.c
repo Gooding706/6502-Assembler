@@ -15,6 +15,11 @@ bool expectLineEnd(token *lineStart)
     return (lineStart->tokenId == NEWLINE);
 }
 
+char* textCopy(char* start, int length)
+{
+    return NULL;
+}
+
 bool parseLabel(token *lineStart, ast *branches)
 {
     if (lineStart->tokenId == COLON)
@@ -83,7 +88,7 @@ bool parseByteList(token *lineStart, ast *branches)
         else if (!expectComma)
         {
             pushU8(0, &byteList);
-            if (!readByteAny(lineStart, byteList.content[byteList.length - 1]))
+            if (!readByteAny(lineStart, &byteList.content[byteList.length - 1]))
             {
                 return false;
             }
@@ -103,6 +108,7 @@ bool parseWordList(token *lineStart, ast *branches)
 {
     u16List adressList = {.content = malloc(sizeof(address_t)), .capacity = 1, .length = 0};
     bool expectComma = false;
+    return false;
 }
 
 bool parseDirective(token *lineStart, ast *branches)

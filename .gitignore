@@ -1,6 +1,7 @@
-.vscode
 .vscode/
 .vscode/*
 
+*.dsYM/
+*.dsYM/*
 .DS_Store
 *.out
