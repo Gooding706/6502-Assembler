@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <tokens.h>
+#include <lexer.h>
 #include <ast.h>
 
 bool isOpcode(unsigned short id)
@@ -19,7 +20,7 @@ bool parseLabel(token *lineStart, ast *branches)
     if (lineStart->tokenId == COLON)
     {
         int len = strlen(lineStart->textContent);
-        astBranch labelObj = (astBranch){.branchType = label, .data.labelText = "textCopy(lineStart->textContent, len)"};
+        astBranch labelObj = (astBranch){.branchType = label, .data.labelText = textCopy(lineStart->textContent, len)};
         pushBranch(labelObj, branches);
 
         lineStart++;
@@ -82,7 +83,7 @@ bool parseByteList(token *lineStart, ast *branches)
         else if (!expectComma)
         {
             pushU8(0, &byteList);
-            if (!readByteAny(lineStart, &byteList.content[byteList.length - 1]))
+            if (!readByteAny(lineStart, byteList.content[byteList.length - 1]))
             {
                 return false;
             }
@@ -98,12 +99,10 @@ bool parseByteList(token *lineStart, ast *branches)
     return true;
 }
 
-//unimplemented
 bool parseWordList(token *lineStart, ast *branches)
 {
     u16List adressList = {.content = malloc(sizeof(address_t)), .capacity = 1, .length = 0};
     bool expectComma = false;
-    return false;
 }
 
 bool parseDirective(token *lineStart, ast *branches)

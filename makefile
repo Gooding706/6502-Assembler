@@ -1,2 +1,2 @@
 Assembler:
-	gcc -g -o debug.out -I include/ src/*.c main.c
+	gcc -o debug.out -I include/ src/*.c main.c
