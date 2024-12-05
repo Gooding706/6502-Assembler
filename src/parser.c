@@ -5,38 +5,41 @@
 #include <lexer.h>
 #include <ast.h>
 
+#include <parser.h>
+
 bool isOpcode(unsigned short id)
 {
     return (id > ADC && id < TYA);
 }
 
-bool expectLineEnd(token *lineStart)
+bool expectLineEnd(token **lineStart)
 {
-    return (lineStart->tokenId == NEWLINE);
+    return ((*lineStart)->tokenId == NEWLINE);
 }
 
-char* textCopy(char* start, int length)
+char *takeLabelTokenValue(token *t)
 {
-    return NULL;
+    char *out = t->textContent;
+    t->textContent = NULL;
+    return out;
 }
 
-bool parseLabel(token *lineStart, ast *branches)
+bool parseLabel(token **lineStart, ast *branches)
 {
-    if (lineStart->tokenId == COLON)
+    if ((*lineStart)->tokenId == COLON)
     {
-        int len = strlen(lineStart->textContent);
-        astBranch labelObj = (astBranch){.branchType = label, .data.labelText = textCopy(lineStart->textContent, len)};
+        astBranch labelObj = (astBranch){.branchType = label, .data.labelText = takeLabelTokenValue(*lineStart - 1)};
         pushBranch(labelObj, branches);
-
-        lineStart++;
+        *lineStart +=1;
         return expectLineEnd(lineStart);
     }
 
+    printf("Expected COLON\n");
     return false;
 }
 
 // take the value from a byte token and free any allocated data
-uint8_t takeTokenValue(token *t)
+uint8_t takeByteTokenValue(token *t)
 {
     uint8_t out = *((uint8_t *)(t->textContent));
     free(t->textContent);
@@ -44,45 +47,57 @@ uint8_t takeTokenValue(token *t)
     return out;
 }
 
-bool readByteAny(token *lineStart, uint8_t *location)
+uint16_t takeWordTokenValue(token *t)
 {
-    if (lineStart->tokenId == DOLLAR)
+    uint16_t out = *((uint16_t *)(t->textContent));
+    free(t->textContent);
+    t->textContent = NULL;
+    return out;
+}
+
+bool readByteAny(token **lineStart, uint8_t *location)
+{
+    if ((*lineStart)->tokenId == DOLLAR)
     {
-        lineStart++;
-        if (lineStart->tokenId != HEXNUMBER_8)
+        *lineStart +=1;
+        if ((*lineStart)->tokenId != HEXNUMBER_8)
         {
+            printf("Expected HEX8\n");
             return false;
         }
-        *location = takeTokenValue(lineStart);
+        *location = takeByteTokenValue(*lineStart);
         return true;
     }
-    else if (lineStart->tokenId == PERCENT)
+    else if ((*lineStart)->tokenId == PERCENT)
     {
-        lineStart++;
-        if (lineStart->tokenId != BINARYNUMBER_8)
+        *lineStart +=1;
+        if ((*lineStart)->tokenId != BINARYNUMBER_8)
         {
+            printf("Expected BINARY8\n");
             return false;
         }
-        *location = takeTokenValue(lineStart);
+        *location = takeByteTokenValue(*lineStart);
         return true;
     }
-    else if (lineStart->tokenId == NUMBER_8)
+    else if ((*lineStart)->tokenId == NUMBER_8)
     {
-        *location = takeTokenValue(lineStart);
+        *location = takeByteTokenValue(*lineStart);
         return true;
     }
 
+    location = NULL;
     return false;
 }
 
-bool parseByteList(token *lineStart, ast *branches)
+bool parseByteList(token **lineStart, ast *branches)
 {
     u8List byteList = {.content = malloc(1), .capacity = 1, .length = 0};
     bool expectComma = false;
-    while (lineStart->tokenId != NEWLINE)
+    while ((*lineStart)->tokenId != NEWLINE)
     {
-        if (expectComma && lineStart->tokenId != COMMA)
+        if (expectComma && (*lineStart)->tokenId != COMMA)
         {
+            printf("Expected COMMA\n");
             return false;
         }
         else if (!expectComma)
@@ -95,7 +110,7 @@ bool parseByteList(token *lineStart, ast *branches)
         }
 
         expectComma = !expectComma;
-        lineStart++;
+        *lineStart +=1;
     }
 
     astBranch outBranch = (astBranch){.branchType = directiveBytes, .data.byteDirective = byteList};
@@ -104,48 +119,128 @@ bool parseByteList(token *lineStart, ast *branches)
     return true;
 }
 
-bool parseWordList(token *lineStart, ast *branches)
+bool readWordAny(token **lineStart, address_t *location)
 {
-    u16List adressList = {.content = malloc(sizeof(address_t)), .capacity = 1, .length = 0};
+    // TODO: why is this not a switch statement?
+    if ((*lineStart)->tokenId == DOLLAR)
+    {
+        *lineStart +=1;
+        if ((*lineStart)->tokenId != HEXNUMBER_16)
+        {
+            printf("Expected HEX16\n");
+            return false;
+        }
+        location->tag = constant;
+        location->data.addressLiteral = takeWordTokenValue(*lineStart);
+        return true;
+    }
+    else if ((*lineStart)->tokenId == PERCENT)
+    {
+        *lineStart +=1;
+        if ((*lineStart)->tokenId != BINARYNUMBER_16)
+        {
+            printf("Expected BINARY16\n");
+            return false;
+        }
+        location->tag = constant;
+        location->data.addressLiteral = takeWordTokenValue(*lineStart);
+        return true;
+    }
+    else if ((*lineStart)->tokenId == NUMBER_16)
+    {
+        location->tag = constant;
+        location->data.addressLiteral = takeWordTokenValue(*lineStart);
+        return true;
+    }
+    else if ((*lineStart)->tokenId == NUMBER_8)
+    {
+        // 8 bit numeric literals can be interpreted as 16 bit
+        uint16_t extended = takeByteTokenValue(*lineStart);
+
+        location->tag = constant;
+        location->data.addressLiteral = extended;
+        return true;
+    }
+    else if ((*lineStart)->tokenId == LABEL)
+    {
+        location->tag = unresolvedLabel;
+        location->data.labelText = takeLabelTokenValue(*lineStart);
+        return true;
+    }
+
+    location = NULL;
+    return false;
+}
+
+bool parseWordList(token **lineStart, ast *branches)
+{
+    u16List wordList = {.content = malloc(sizeof(address_t)), .capacity = 1, .length = 0};
     bool expectComma = false;
-    return false;
+    while ((*lineStart)->tokenId != NEWLINE)
+    {
+        if (expectComma && (*lineStart)->tokenId != COMMA)
+        {
+            printf("Expected COMMA\n");
+            return false;
+        }
+        else if (!expectComma)
+        {
+            pushU16(0, &wordList);
+            if (!readWordAny(lineStart, &wordList.content[wordList.length - 1]))
+            {
+
+                return false;
+            }
+        }
+
+        expectComma = !expectComma;
+        *lineStart +=1;
+    }
+
+    astBranch outBranch = (astBranch){.branchType = directiveWords, .data.wordDirective = wordList};
+    pushBranch(outBranch, branches);
+
+    return true;
 }
 
-bool parseDirective(token *lineStart, ast *branches)
+bool parseDirective(token **lineStart, ast *branches)
 {
-    if (lineStart->tokenId == BYTEDIRECTIVE)
+    if ((*lineStart)->tokenId == BYTEDIRECTIVE)
     {
-        lineStart++;
+        *lineStart +=1;
         return parseByteList(lineStart, branches);
     }
-    else if (lineStart->tokenId == WORDDIRECTIVE)
+    else if ((*lineStart)->tokenId == WORDDIRECTIVE)
     {
-        lineStart++;
-        return parseByteList(lineStart, branches);
+        *lineStart +=1;
+        return parseWordList(lineStart, branches);
     }
-
+    printf("Expected DIRECTIVE\n");
     return false;
 }
 
-bool parseLine(token *lineStart, ast *branches)
+bool parseLine(token **lineStart, ast *branches)
 {
-    if (lineStart->tokenId == LABEL)
+    if ((*lineStart)->tokenId == LABEL)
     {
-        lineStart++;
-        parseLabel(lineStart, branches);
+        *lineStart +=1;
+        return parseLabel(lineStart, branches);
     }
-    else if (lineStart->tokenId == PERIOD)
+    else if ((*lineStart)->tokenId == PERIOD)
     {
-        lineStart++;
-        parseDirective(lineStart, branches);
+        *lineStart +=1;
+        return parseDirective(lineStart, branches);
     }
-    else if (isOpcode(lineStart->tokenId))
+    else if (isOpcode((*lineStart)->tokenId))
     {
+        printf("Opcodes are not supported\n");
+        return false;
     }
-
+    printf("%i\n", (int)((*lineStart)->tokenId));
     return false;
 }
 
+// TODO:Better Error Messages
 ast *parseTokenList(tokenList *tokens)
 {
     ast *out = malloc(sizeof(ast));
@@ -154,7 +249,12 @@ ast *parseTokenList(tokenList *tokens)
     token *currentToken = tokens->content;
     while (currentToken->tokenId != FILEEND)
     {
-        // parse line
+        if (!parseLine(&currentToken, out))
+        {
+            printf("failed during parsing!\n");
+            exit(-1);
+        }
+        currentToken++;
     }
 
     return out;

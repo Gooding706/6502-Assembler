@@ -16,7 +16,8 @@ char *loadFile(const char *path)
     fseek(f, 0L, SEEK_END);
     size_t length = ftell(f);
     rewind(f);
-    char *out = malloc(length);
+    char *out = malloc(length + 1);
+    out[length] = '\0';
     fread(out, length, 1, f);
 
     fclose(f);
@@ -69,6 +70,36 @@ bool tokenizeBin(char **tokenStart, tokenList *tokens)
         token t = (token){BINARYNUMBER_8, malloc(1)};
         *((uint8_t *)t.textContent) = strtoul(canonicalStart, NULL, 2);
         pushToken(t, tokens);
+        return true;
+    }
+
+    return false;
+}
+
+bool tokenizeNum(char **tokenStart, tokenList *tokens)
+{
+    char *canonicalStart = *tokenStart;
+    while (isnumber(**tokenStart))
+    {
+        *tokenStart += 1;
+    }
+
+    int length = (*tokenStart - canonicalStart);
+    int value = strtoul(canonicalStart, NULL, 10);
+
+    if (value > UINT8_MAX && value < UINT16_MAX)
+    {
+        token t = (token){NUMBER_16, malloc(2)};
+        *((uint16_t *)t.textContent) = value;
+        pushToken(t, tokens);
+        return true;
+    }
+    else if (value < UINT8_MAX)
+    {
+        token t = (token){NUMBER_8, malloc(1)};
+        *((uint8_t *)t.textContent) = value;
+        pushToken(t, tokens);
+        return true;
     }
 
     return false;
@@ -439,8 +470,9 @@ bool tokenizeDirective(char **tokenStart, tokenList *tokens)
 
 void readWhiteSpace(char **tokenStart)
 {
-    while (isspace(**tokenStart) && **tokenStart != '\0' && **tokenStart != '\n')
+    while (**tokenStart == ' ' || **tokenStart == '\t' || **tokenStart == '\v')
     {
+
         *tokenStart += 1;
     }
 }
@@ -477,6 +509,8 @@ bool tokenize(char **tokenStart, tokenList *tokens)
         return tokenizeDirective(tokenStart, tokens);
     case '\n':
         return true;
+    case '\r':
+        return true;
     case '\0':
         return true;
     case ';':
@@ -490,6 +524,10 @@ bool tokenize(char **tokenStart, tokenList *tokens)
         *tokenStart += 1;
         return tokenizeBin(tokenStart, tokens);
     default:
+        if (isnumber(**tokenStart))
+        {
+            return tokenizeNum(tokenStart, tokens);
+        }
         return tokenizeMultiChar(tokenStart, tokens);
     }
 }
@@ -497,7 +535,7 @@ bool tokenize(char **tokenStart, tokenList *tokens)
 bool tokenizeLine(char **lineStart, tokenList *tokens)
 {
     bool isComment = false;
-    while (**lineStart != '\n' && **lineStart != '\0')
+    while (**lineStart != '\r' && **lineStart != '\n' && **lineStart != '\0')
     {
         if (isComment)
         {
