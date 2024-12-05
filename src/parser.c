@@ -30,7 +30,7 @@ bool parseLabel(token **lineStart, ast *branches)
     {
         astBranch labelObj = (astBranch){.branchType = label, .data.labelText = takeLabelTokenValue(*lineStart - 1)};
         pushBranch(labelObj, branches);
-        *lineStart +=1;
+        *lineStart += 1;
         return expectLineEnd(lineStart);
     }
 
@@ -57,9 +57,10 @@ uint16_t takeWordTokenValue(token *t)
 
 bool readByteAny(token **lineStart, uint8_t *location)
 {
-    if ((*lineStart)->tokenId == DOLLAR)
+    switch ((*lineStart)->tokenId)
     {
-        *lineStart +=1;
+    case DOLLAR:
+        *lineStart += 1;
         if ((*lineStart)->tokenId != HEXNUMBER_8)
         {
             printf("Expected HEX8\n");
@@ -67,10 +68,8 @@ bool readByteAny(token **lineStart, uint8_t *location)
         }
         *location = takeByteTokenValue(*lineStart);
         return true;
-    }
-    else if ((*lineStart)->tokenId == PERCENT)
-    {
-        *lineStart +=1;
+    case PERCENT:
+        *lineStart += 1;
         if ((*lineStart)->tokenId != BINARYNUMBER_8)
         {
             printf("Expected BINARY8\n");
@@ -78,15 +77,13 @@ bool readByteAny(token **lineStart, uint8_t *location)
         }
         *location = takeByteTokenValue(*lineStart);
         return true;
-    }
-    else if ((*lineStart)->tokenId == NUMBER_8)
-    {
+    case NUMBER_8:
         *location = takeByteTokenValue(*lineStart);
         return true;
+    default:
+        location = NULL;
+        return false;
     }
-
-    location = NULL;
-    return false;
 }
 
 bool parseByteList(token **lineStart, ast *branches)
@@ -110,7 +107,7 @@ bool parseByteList(token **lineStart, ast *branches)
         }
 
         expectComma = !expectComma;
-        *lineStart +=1;
+        *lineStart += 1;
     }
 
     astBranch outBranch = (astBranch){.branchType = directiveBytes, .data.byteDirective = byteList};
@@ -121,10 +118,10 @@ bool parseByteList(token **lineStart, ast *branches)
 
 bool readWordAny(token **lineStart, address_t *location)
 {
-    // TODO: why is this not a switch statement?
-    if ((*lineStart)->tokenId == DOLLAR)
+    switch ((*lineStart)->tokenId)
     {
-        *lineStart +=1;
+    case DOLLAR:
+        *lineStart += 1;
         if ((*lineStart)->tokenId != HEXNUMBER_16)
         {
             printf("Expected HEX16\n");
@@ -133,10 +130,8 @@ bool readWordAny(token **lineStart, address_t *location)
         location->tag = constant;
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
         return true;
-    }
-    else if ((*lineStart)->tokenId == PERCENT)
-    {
-        *lineStart +=1;
+    case PERCENT:
+        *lineStart += 1;
         if ((*lineStart)->tokenId != BINARYNUMBER_16)
         {
             printf("Expected BINARY16\n");
@@ -145,31 +140,26 @@ bool readWordAny(token **lineStart, address_t *location)
         location->tag = constant;
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
         return true;
-    }
-    else if ((*lineStart)->tokenId == NUMBER_16)
-    {
+    case NUMBER_16:
         location->tag = constant;
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
         return true;
-    }
-    else if ((*lineStart)->tokenId == NUMBER_8)
-    {
+    case NUMBER_8:
         // 8 bit numeric literals can be interpreted as 16 bit
         uint16_t extended = takeByteTokenValue(*lineStart);
 
         location->tag = constant;
         location->data.addressLiteral = extended;
         return true;
-    }
-    else if ((*lineStart)->tokenId == LABEL)
-    {
+    case LABEL:
         location->tag = unresolvedLabel;
         location->data.labelText = takeLabelTokenValue(*lineStart);
         return true;
-    }
 
-    location = NULL;
-    return false;
+    default:
+        location = NULL;
+        return false;
+    }
 }
 
 bool parseWordList(token **lineStart, ast *branches)
@@ -194,7 +184,7 @@ bool parseWordList(token **lineStart, ast *branches)
         }
 
         expectComma = !expectComma;
-        *lineStart +=1;
+        *lineStart += 1;
     }
 
     astBranch outBranch = (astBranch){.branchType = directiveWords, .data.wordDirective = wordList};
@@ -207,12 +197,12 @@ bool parseDirective(token **lineStart, ast *branches)
 {
     if ((*lineStart)->tokenId == BYTEDIRECTIVE)
     {
-        *lineStart +=1;
+        *lineStart += 1;
         return parseByteList(lineStart, branches);
     }
     else if ((*lineStart)->tokenId == WORDDIRECTIVE)
     {
-        *lineStart +=1;
+        *lineStart += 1;
         return parseWordList(lineStart, branches);
     }
     printf("Expected DIRECTIVE\n");
@@ -223,12 +213,12 @@ bool parseLine(token **lineStart, ast *branches)
 {
     if ((*lineStart)->tokenId == LABEL)
     {
-        *lineStart +=1;
+        *lineStart += 1;
         return parseLabel(lineStart, branches);
     }
     else if ((*lineStart)->tokenId == PERIOD)
     {
-        *lineStart +=1;
+        *lineStart += 1;
         return parseDirective(lineStart, branches);
     }
     else if (isOpcode((*lineStart)->tokenId))
@@ -240,7 +230,6 @@ bool parseLine(token **lineStart, ast *branches)
     return false;
 }
 
-// TODO:Better Error Messages
 ast *parseTokenList(tokenList *tokens)
 {
     ast *out = malloc(sizeof(ast));
