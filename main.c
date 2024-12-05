@@ -29,7 +29,7 @@ void printU16List(u16List *list)
             printf("%i,", (int)list->content[i].data.addressLiteral);
         }else
         {
-            printf("%s,", list->content[i].data.labelText);
+            printf("'%s',", list->content[i].data.labelText);
         }
     }
 }
