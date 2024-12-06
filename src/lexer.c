@@ -84,7 +84,6 @@ bool tokenizeNum(char **tokenStart, tokenList *tokens)
         *tokenStart += 1;
     }
 
-    int length = (*tokenStart - canonicalStart);
     int value = strtoul(canonicalStart, NULL, 10);
 
     if (value > UINT8_MAX && value < UINT16_MAX)

@@ -145,11 +145,13 @@ bool readWordAny(token **lineStart, address_t *location)
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
         return true;
     case NUMBER_8:
+    {
         // 8 bit numeric literals can be interpreted as 16 bit
         uint16_t extended = takeByteTokenValue(*lineStart);
 
         location->tag = constant;
         location->data.addressLiteral = extended;
+    }
         return true;
     case LABEL:
         location->tag = unresolvedLabel;
