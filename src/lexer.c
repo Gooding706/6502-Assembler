@@ -16,8 +16,9 @@ char *loadFile(const char *path)
     fseek(f, 0L, SEEK_END);
     size_t length = ftell(f);
     rewind(f);
-    char *out = malloc(length + 1);
-    out[length] = '\0';
+    char *out = malloc(length + 2);
+    out[length] = '\n';
+       out[length+1] = '\0';
     fread(out, length, 1, f);
 
     fclose(f);
