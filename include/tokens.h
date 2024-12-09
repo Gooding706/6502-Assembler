@@ -2,6 +2,8 @@
 #ifndef TOKEN
 #define TOKEN
 
+#include <stdbool.h>
+
 #define ADC 0
 #define AND 1
 #define ASL 2
@@ -83,21 +85,36 @@
 #define NUMBER_8 75
 #define NUMBER_16 76
 
+#define isAccumulatorAddressable(instruction) isTokenOfType(instruction, 4, ASL, LSR, ROL, ROR)
+#define isAbsoluteAddressable(instruction) isTokenOfType(instruction, 23, ADC, AND, ASL, BIT, CMP, CPX, CPY, DEC, EOR, INC, JMP, JSR, LDA, LDX, LDY, LSR, ORA, ROL, ROR, SBC, STA, STX, STY)
+#define isAbsoluteXAddressable(instruction) isTokenOfType(instruction, 15, ADC, AND, ASL, CMP, DEC, EOR, INC, LDA, LDY, LSR, ORA, ROL, ROR, SBC, STA)
+#define isAbsoluteYAddressable(instruction) isTokenOfType(instruction, 9, ADC, AND, CMP, EOR, LDA, LDX, ORA, SBC, STA)
+#define isImmediateAddressable(instruction) isTokenOfType(instruction, 11, ADC, AND, CMP, CPX, CPY, EOR, LDX, LDA, LDY, ORA, SBC)
+#define isImpliedAddressable(instruction) isTokenOfType(instruction, 25, BRK, CLC, CLD, CLI, CLV, DEX, DEY, INX, INY, NOP, PHA, PHP, PLA, PLP, RTI, RTS, SEC, SED, SEI, TAX, TAY, TSX, TXA, TXS, TYA)
+#define isIndirectAddressable(instruction) isTokenOfType(instruction, 1, JMP)
+#define isIndirectXAddressable(instruction) isTokenOfType(instruction, 8, ADC, AND, CMP, EOR, LDA, ORA, SBC, STA)
+#define isIndirectYAddressable(instruction) isTokenOfType(instruction, 8, ADC, AND, CMP, EOR, LDA, ORA, SBC, STA)
+#define isRelativeAddressable(instruction) isTokenOfType(instruction, 8, BCC, BCS, BEQ, BMI, BNE, BPL, BVC, BVS)
+#define isZeroPageAddressable(instruction) isTokenOfType(instruction, 20, ADC, AND, ASL, CMP, CPX, CPY, DEX, EOR, INC, LDA, LDX, LDY, LSR, ORA, ROL, ROR, SBC, STA, STX, STY)
+#define isZeroPageXAddressable(instruction) isTokenOfType(instruction, 16, ADC, AND, ASL, CMP, DEC, EOR, INC, LDA, LDY, LSR, ORA, ROL, ROR, SBC, STA, STY)
+#define isZeroPageYAddressable(instruction) isTokenOfType(instruction, 2, LDX, STX)
+
 typedef struct
 {
     unsigned short tokenId;
-    char* textContent;
+    char *textContent;
 } token;
 
 typedef struct
 {
-    token* content;
+    token *content;
     int capacity;
     int length;
 } tokenList;
 
-void pushToken(token t, tokenList* list);
-void freeTokenList(tokenList* list);
+void pushToken(token t, tokenList *list);
+void freeTokenList(tokenList *list);
 
+bool isTokenOfType(int id, int count, ...);
 
 #endif

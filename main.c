@@ -3,12 +3,18 @@
 #include <tokens.h>
 #include <parser.h>
 
-void printTokens(tokenList *tokens)
+void printToken(unsigned short id)
 {
     char *names[] = {"ADC", "AND", "ASL", "BCC", "BCS", "BEQ", "BIT", "BMI", "BNE", "BPL", "BRK", "BVC", "BVS", "CLC", "CLD", "CLI", "CLV", "CMP", "CPX", "CPY", "DEC", "DEX", "DEY", "EOR", "INC", "INX", "INY", "JMP", "JSR", "LDA", "LDX", "LDY", "LSR", "NOP", "ORA", "PHA", "PHP", "PLA", "PLP", "ROL", "ROR", "RTI", "RTS", "SBC", "SEC", "SED", "SEI", "STA", "STX", "STY", "TAX", "TAY", "TSX", "TXA", "TXS", "TYA", "HASH", "DOLLAR", "COLON", "PERCENT", "COMMA", "NEWLINE", "OPENPAREN", "CLOSEPAREN", "FILEEND", "PERIOD", "LABEL", "BYTEDIRECTIVE", "WORDDIRECTIVE", "XREGISTER", "YREGISTER", "HEXNUMBER8", "HEXNUMBER16", "BINARYNUMBER8", "BINARYNUMBER16", "NUMBER8", "NUMBER16"};
+    printf("%s", (id <= 76) ? names[id] : "UNDEFINED");
+}
+
+void printTokens(tokenList *tokens)
+{
     for (int i = 0; i < tokens->length; i++)
     {
-        printf("%s\n", (tokens->content[i].tokenId <= 76) ? names[tokens->content[i].tokenId] : "UNDEFINED");
+        printToken(tokens->content[i].tokenId);
+        printf("\n");
     }
 }
 
@@ -20,17 +26,24 @@ void printU8List(u8List *list)
     }
 }
 
+void printAddress(address_t a)
+{
+    if (a.tag == constant)
+    {
+        printf("%i", a.data.addressLiteral);
+    }
+    else
+    {
+        printf("'%s'", a.data.labelText);
+    }
+}
+
 void printU16List(u16List *list)
 {
     for (int i = 0; i < list->length; i++)
     {
-        if (list->content[i].tag == constant)
-        {
-            printf("%i,", (int)list->content[i].data.addressLiteral);
-        }else
-        {
-            printf("'%s',", list->content[i].data.labelText);
-        }
+        printAddress(list->content[i]);
+        printf(",");
     }
 }
 
@@ -50,6 +63,68 @@ void printAST(ast *a)
         case directiveWords:
             printU16List(&a->content[i].data.wordDirective);
             break;
+        case accumulator:
+            printToken(a->content[i].data.opcodeOnly);
+            break;
+        case implied:
+            printToken(a->content[i].data.opcodeOnly);
+            break;
+        case immediate:
+            printToken(a->content[i].data.immediateMode.opcode);
+            printf("  #%i", (int)a->content[i].data.immediateMode.value);
+            break;
+        case absolute:
+            printToken(a->content[i].data.absoluteMode.opcode);
+            printf("  ");
+            printAddress(a->content[i].data.absoluteMode.address);
+            break;
+        case absoluteX:
+            printToken(a->content[i].data.absoluteMode.opcode);
+            printf("  ");
+            printAddress(a->content[i].data.absoluteMode.address);
+            printf("  ,x");
+            break;
+        case absoluteY:
+            printToken(a->content[i].data.absoluteMode.opcode);
+            printf("  ");
+            printAddress(a->content[i].data.absoluteMode.address);
+            printf("  ,y");
+            break;
+        case relative:
+            printToken(a->content[i].data.relativeMode.opcode);
+            printf("  ");
+            printAddress(a->content[i].data.relativeMode.address);
+            break;
+        case indirect:
+            printToken(a->content[i].data.indirectMode.opcode);
+            printf("  (");
+            printAddress(a->content[i].data.indirectMode.address);
+            printf(")");
+            break;
+        case indirectX:
+            printToken(a->content[i].data.indirectRegisterMode.opcode);
+            printf("  (");
+            printf("%i", (int)a->content[i].data.indirectRegisterMode.value);
+            printf(",x)");
+            break;
+        case indirectY:
+            printToken(a->content[i].data.indirectRegisterMode.opcode);
+            printf("  (");
+            printf("%i", (int)a->content[i].data.indirectRegisterMode.value);
+            printf("),y");
+            break;
+        case zeroPage:
+            printToken(a->content[i].data.zeroPageMode.opcode);
+            printf("  %i", (int)a->content[i].data.zeroPageMode.value);
+            break;
+        case zeroPageX:
+            printToken(a->content[i].data.zeroPageMode.opcode);
+            printf("  %i,x", (int)a->content[i].data.zeroPageMode.value);
+            break;
+        case zeroPageY:
+            printToken(a->content[i].data.zeroPageMode.opcode);
+            printf("  %i,y", (int)a->content[i].data.zeroPageMode.value);
+            break;
         default:
             break;
         }
@@ -57,16 +132,18 @@ void printAST(ast *a)
     }
 }
 
-// TODO: recognize tab
 int main()
 {
     tokenList tokens = (tokenList){.content = malloc(sizeof(token)), .capacity = 1, .length = 0};
     char *fileContents = loadFile("tests/test2.asm");
     tokenizeFile(fileContents, &tokens);
-    printTokens(&tokens);
+
 
     ast *tree = parseTokenList(&tokens);
     printAST(tree);
+
+    freeAST(tree);
+    free(tree);
 
     freeTokenList(&tokens);
     free(fileContents);

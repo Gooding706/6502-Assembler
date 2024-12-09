@@ -66,7 +66,6 @@ typedef struct
         label,
         directiveBytes,
         directiveWords,
-        instruction,
         // Different addressing modes
         accumulator,
         absolute,
@@ -110,5 +109,6 @@ typedef struct
 void pushU16(uint16_t u16, u16List *list);
 void pushU8(uint8_t u8, u8List *list);
 void pushBranch(astBranch branch, ast *list);
+void freeAST(ast *list);
 
 #endif
