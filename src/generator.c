@@ -105,7 +105,7 @@ bool matchLabel(char *labelText, labelList *list, int programOffset, uint16_t *v
     return false;
 }
 
-uint16_t resolveAdress(address_t addr, labelList *list, int programOffset)
+uint16_t resolveAddress(address_t addr, labelList *list, int programOffset)
 {
     if (addr.tag == unresolvedLabel)
     {
@@ -121,6 +121,8 @@ uint16_t resolveAdress(address_t addr, labelList *list, int programOffset)
     {
         return addr.data.addressLiteral;
     }
+
+    return 0;
 }
 
 // TODO: convert endianess for big endian systems
@@ -386,10 +388,308 @@ void resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList 
 
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
-    *((uint16_t *)*outputData) = resolveAdress(branch->data.absoluteMode.address, labelTable, programOffset);
+    *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
     *outputData += 2;
 }
 
+void resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.absoluteMode.opcode)
+    {
+    case ADC:
+        code = 0x7D;
+        break;
+    case AND:
+        code = 0x3D;
+        break;
+    case ASL:
+        code = 0x1E;
+        break;
+    case CMP:
+        code = 0xDD;
+        break;
+    case DEC:
+        code = 0xDE;
+        break;
+    case EOR:
+        code = 0x5D;
+        break;
+    case INC:
+        code = 0xFE;
+        break;
+    case LDA:
+        code = 0xBD;
+        break;
+    case LDY:
+        code = 0xBC;
+        break;
+    case LSR:
+        code = 0x5E;
+        break;
+    case ORA:
+        code = 0x1D;
+        break;
+    case ROL:
+        code = 0x3E;
+        break;
+    case ROR:
+        code = 0x7E;
+        break;
+    case SBC:
+        code = 0xFD;
+        break;
+    case STA:
+        code = 0x9D;
+        break;
+    default:
+        break;
+    }
+
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+    *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+    *outputData += 2;
+}
+
+void resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.absoluteMode.opcode)
+    {
+    case ADC:
+        code = 0x79;
+        break;
+    case AND:
+        code = 0x39;
+        break;
+    case CMP:
+        code = 0xD9;
+        break;
+    case EOR:
+        code = 0x59;
+        break;
+    case LDA:
+        code = 0xB9;
+        break;
+    case LDX:
+        code = 0xBE;
+        break;
+    case ORA:
+        code = 0x19;
+        break;
+    case SBC:
+        code = 0xF9;
+        break;
+    case STA:
+        code = 0x99;
+        break;
+    default:
+        break;
+    }
+
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+    *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+    *outputData += 2;
+}
+
+void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int programOffset, labelList *labelTable, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.relativeMode.opcode)
+    {
+    case BCC:
+        code = 0x90;
+        break;
+    case BCS:
+        code = 0xB0;
+        break;
+    case BEQ:
+        code = 0xF0;
+        break;
+    case BMI:
+        code = 0x30;
+        break;
+    case BNE:
+        code = 0xD0;
+        break;
+    case BPL:
+        code = 0x10;
+        break;
+    case BVC:
+        code = 0x50;
+        break;
+    case BVS:
+        code = 0x70;
+        break;
+    default:
+        break;
+    }
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+    uint16_t address = resolveAddress(branch->data.relativeMode.address, labelTable, programOffset);
+    int offsetValue = (address - (instructionOffset + 2));
+    if (abs(offsetValue) > 127)
+    {
+        printf("branches must not exceed the range -127 to 127");
+        exit(-1);
+    }
+    *((signed char *)*outputData) = (signed char)offsetValue;
+    *outputData += 1;
+}
+
+resolveZeroPageInstruction(astBranch *branch, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.zeroPageMode.opcode)
+    {
+    case ADC:
+        code = 0x65;
+        break;
+    case AND:
+        code = 0x25;
+        break;
+    case ASL:
+        code = 0x06;
+        break;
+    case CMP:
+        code = 0xC5;
+        break;
+    case CPX:
+        code = 0xE4;
+        break;
+    case CPY:
+        code = 0xC4;
+        break;
+    case DEC:
+        code = 0xC6;
+        break;
+    case EOR:
+        code = 0x45;
+        break;
+    case INC:
+        code = 0xE6;
+        break;
+    case LDA:
+        code = 0xA5;
+        break;
+    case LDX:
+        code = 0xA6;
+        break;
+    case LDY:
+        code = 0xA4;
+        break;
+    case LSR:
+        code = 0x46;
+        break;
+    case ORA:
+        code = 0x05;
+        break;
+    case ROL:
+        code = 0x26;
+        break;
+    case ROR:
+        code = 0x66;
+        break;
+    case SBC:
+        code = 0xE5;
+        break;
+    case STA:
+        code = 0x85;
+        break;
+    case STX:
+        code = 0x86;
+        break;
+    case STY:
+        code = 0x84;
+        break;
+    default:
+        break;
+    }
+
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+}
+
+resolveZeroPageXInstruction(astBranch *branch, void **outputData)
+{
+
+    uint8_t code;
+    switch (branch->data.zeroPageMode.opcode)
+    {
+    case ADC:
+        code = 0x75;
+        break;
+    case AND:
+        code = 0x35;
+        break;
+    case ASL:
+        code = 0x16;
+        break;
+    case CMP:
+        code = 0xD5;
+        break;
+    case DEC:
+        code = 0xD6;
+        break;
+    case EOR:
+        code = 0x55;
+        break;
+    case INC:
+        code = 0xF6;
+        break;
+    case LDA:
+        code = 0xB5;
+        break;
+    case LDY:
+        code = 0xB4;
+        break;
+    case LSR:
+        code = 0x56;
+        break;
+    case ORA:
+        code = 0x15;
+        break;
+    case ROL:
+        code = 0x36;
+        break;
+    case ROR:
+        code = 0x76;
+        break;
+    case SBC:
+        code = 0xF5;
+        break;
+    case STA:
+        code = 0x95;
+        break;
+    case STY:
+        code = 0x94;
+        break;
+    default:
+        break;
+    }
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+}
+
+resolveZeroPageYInstruction(astBranch *branch, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.zeroPageMode.opcode)
+    {
+    case LDX:
+        code = 0xB6;
+        break;
+    case STX:
+        code = 0x96;
+        break;
+    default:
+        break;
+    }
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+}
 // allocate source dump into output data and return length
 int assembleParseTree(ast *tree, int programOffset, void **outputData)
 {
@@ -398,7 +698,9 @@ int assembleParseTree(ast *tree, int programOffset, void **outputData)
 
     *outputData = malloc(codeSize);
 
+    void *canonicalStart = *outputData;
     void *dataHead = *outputData;
+
     for (int i = 0; i < tree->length; i++)
     {
         astBranch currentBranch = tree->content[i];
@@ -422,6 +724,24 @@ int assembleParseTree(ast *tree, int programOffset, void **outputData)
             break;
         case absolute:
             resolveAbsoluteInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            break;
+        case absoluteX:
+            resolveAbsoluteXInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            break;
+        case absoluteY:
+            resolveAbsoluteYInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            break;
+        case relative:
+            resolveRelativeInstruction(&currentBranch, (int)(dataHead - canonicalStart), programOffset, &labelTable, &dataHead);
+            break;
+        case zeroPage:
+            resolveZeroPageInstruction(&currentBranch, &dataHead);
+            break;
+        case zeroPageX:
+            resolveZeroPageXInstruction(&currentBranch, &dataHead);
+            break;
+        case zeroPageY:
+            resolveZeroPageYInstruction(&currentBranch, &dataHead);
             break;
         default:
             break;
