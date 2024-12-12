@@ -539,7 +539,7 @@ void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int pr
     *outputData += 1;
 }
 
-resolveZeroPageInstruction(astBranch *branch, void **outputData)
+void resolveZeroPageInstruction(astBranch *branch, void **outputData)
 {
     uint8_t code;
     switch (branch->data.zeroPageMode.opcode)
@@ -612,7 +612,7 @@ resolveZeroPageInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-resolveZeroPageXInstruction(astBranch *branch, void **outputData)
+void esolveZeroPageXInstruction(astBranch *branch, void **outputData)
 {
 
     uint8_t code;
@@ -673,7 +673,7 @@ resolveZeroPageXInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-resolveZeroPageYInstruction(astBranch *branch, void **outputData)
+void resolveZeroPageYInstruction(astBranch *branch, void **outputData)
 {
     uint8_t code;
     switch (branch->data.zeroPageMode.opcode)
@@ -690,6 +690,88 @@ resolveZeroPageYInstruction(astBranch *branch, void **outputData)
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
 }
+
+void resolveIndirectInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+{
+    if (branch->data.indirectMode.opcode == JMP)
+    {
+        *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+        *outputData += 2;
+    }
+}
+
+void resolveIndirectXInstruction(astBranch *branch, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.zeroPageMode.opcode)
+    {
+    case ADC:
+        code = 0x61;
+        break;
+    case AND:
+        code = 0x21;
+        break;
+    case CMP:
+        code = 0xC1;
+        break;
+    case EOR:
+        code = 0x41;
+        break;
+    case LDA:
+        code = 0xA1;
+        break;
+    case ORA:
+        code = 0x01;
+        break;
+    case SBC:
+        code = 0xE1;
+        break;
+    case STA:
+        code = 0x81;
+        break;
+    default:
+        break;
+    }
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+}
+
+void resolveIndirectYInstruction(astBranch *branch, void **outputData)
+{
+    uint8_t code;
+    switch (branch->data.zeroPageMode.opcode)
+    {
+    case ADC:
+        code = 0x71;
+        break;
+    case AND:
+        code = 0x31;
+        break;
+    case CMP:
+        code = 0xD1;
+        break;
+    case EOR:
+        code = 0x51;
+        break;
+    case LDA:
+        code = 0xB1;
+        break;
+    case ORA:
+        code = 0x11;
+        break;
+    case SBC:
+        code = 0xF1;
+        break;
+    case STA:
+        code = 0x91;
+        break;
+    default:
+        break;
+    }
+    *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+}
+
 // allocate source dump into output data and return length
 int assembleParseTree(ast *tree, int programOffset, void **outputData)
 {
@@ -742,6 +824,15 @@ int assembleParseTree(ast *tree, int programOffset, void **outputData)
             break;
         case zeroPageY:
             resolveZeroPageYInstruction(&currentBranch, &dataHead);
+            break;
+        case indirect:
+            resolveIndirectInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            break;
+        case indirectX:
+            resolveIndirectXInstruction(&currentBranch, &dataHead);
+            break;
+        case indirectY:
+            resolveIndirectYInstruction(&currentBranch, &dataHead);
             break;
         default:
             break;
