@@ -2,6 +2,7 @@
 #include <lexer.h>
 #include <tokens.h>
 #include <parser.h>
+#include <generator.h>
 
 void printToken(unsigned short id)
 {
@@ -135,17 +136,25 @@ void printAST(ast *a)
 int main()
 {
     tokenList tokens = (tokenList){.content = malloc(sizeof(token)), .capacity = 1, .length = 0};
-    char *fileContents = loadFile("tests/test2.asm");
+    char *fileContents = loadFile("tests/test3.asm");
     tokenizeFile(fileContents, &tokens);
 
 
     ast *tree = parseTokenList(&tokens);
     printAST(tree);
 
+    char* outContent;
+    int len = assembleParseTree(tree, 0x8000, &outContent);
+    FILE *f = fopen("dump.bin", "w");
+    fwrite(outContent, len, 1, f);
+    printf("%i\n", len);
+    fclose(f);
+
     freeAST(tree);
     free(tree);
 
     freeTokenList(&tokens);
     free(fileContents);
+    free(outContent);
     return 0;
 }

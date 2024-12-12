@@ -5,3 +5,5 @@
 *.dsYM/*
 .DS_Store
 *.out
+
+dump.bin

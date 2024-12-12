@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <memory.h>
+#include <stdio.h>
 
 #include <ast.h>
 #include <parser.h>
@@ -33,6 +34,16 @@ void pushLabel(char *label, uint16_t offset, labelList *list)
     }
 
     list->content[list->length] = (resolvedLabel){label, offset};
+    list->length++;
+}
+
+void freeLabelList(labelList *list)
+{
+    for(int i = 0; i < list->length; i++)
+    {
+        free(list->content[i].labelText);
+    }
+    free(list->content);
 }
 
 int branchSize(astBranch *branch)
@@ -112,7 +123,7 @@ uint16_t resolveAddress(address_t addr, labelList *list, int programOffset)
         uint16_t out;
         if (!matchLabel(addr.data.labelText, list, programOffset, &out))
         {
-            printf("un-resolved label '%s'", addr.data.labelText);
+            printf("un-resolved label '%s'\n", addr.data.labelText);
             exit(-1);
         }
         return out;
@@ -126,7 +137,7 @@ uint16_t resolveAddress(address_t addr, labelList *list, int programOffset)
 }
 
 // TODO: convert endianess for big endian systems
-void resolveWordList(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+void resolveWordList(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
     for (int i = 0; i < branch->data.wordDirective.length; i++)
     {
@@ -147,9 +158,9 @@ void resolveWordList(astBranch *branch, int programOffset, labelList *labelTable
     }
 }
 
-void resolveImpliedInstruction(astBranch *branch, void **outputData)
+void resolveImpliedInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.opcodeOnly)
     {
     case BRK:
@@ -235,9 +246,9 @@ void resolveImpliedInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void resolveAccumulatorInstruction(astBranch *branch, void **outputData)
+void resolveAccumulatorInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.opcodeOnly)
     {
     case ASL:
@@ -260,9 +271,9 @@ void resolveAccumulatorInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void resolveImmediateInstruction(astBranch *branch, void **outputData)
+void resolveImmediateInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.immediateMode.opcode)
     {
     case ADC:
@@ -308,9 +319,9 @@ void resolveImmediateInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+void resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.absoluteMode.opcode)
     {
     case ADC:
@@ -392,9 +403,9 @@ void resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList 
     *outputData += 2;
 }
 
-void resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+void resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.absoluteMode.opcode)
     {
     case ADC:
@@ -452,9 +463,9 @@ void resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList
     *outputData += 2;
 }
 
-void resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+void resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.absoluteMode.opcode)
     {
     case ADC:
@@ -494,9 +505,9 @@ void resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList
     *outputData += 2;
 }
 
-void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int programOffset, labelList *labelTable, void **outputData)
+void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int programOffset, labelList *labelTable, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.relativeMode.opcode)
     {
     case BCC:
@@ -539,9 +550,9 @@ void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int pr
     *outputData += 1;
 }
 
-void resolveZeroPageInstruction(astBranch *branch, void **outputData)
+void resolveZeroPageInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
     {
     case ADC:
@@ -612,10 +623,10 @@ void resolveZeroPageInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void esolveZeroPageXInstruction(astBranch *branch, void **outputData)
+void resolveZeroPageXInstruction(astBranch *branch, char **outputData)
 {
 
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
     {
     case ADC:
@@ -673,9 +684,9 @@ void esolveZeroPageXInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void resolveZeroPageYInstruction(astBranch *branch, void **outputData)
+void resolveZeroPageYInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
     {
     case LDX:
@@ -691,7 +702,7 @@ void resolveZeroPageYInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void resolveIndirectInstruction(astBranch *branch, int programOffset, labelList *labelTable, void **outputData)
+void resolveIndirectInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
     if (branch->data.indirectMode.opcode == JMP)
     {
@@ -700,9 +711,9 @@ void resolveIndirectInstruction(astBranch *branch, int programOffset, labelList 
     }
 }
 
-void resolveIndirectXInstruction(astBranch *branch, void **outputData)
+void resolveIndirectXInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
     {
     case ADC:
@@ -736,9 +747,9 @@ void resolveIndirectXInstruction(astBranch *branch, void **outputData)
     *outputData += 1;
 }
 
-void resolveIndirectYInstruction(astBranch *branch, void **outputData)
+void resolveIndirectYInstruction(astBranch *branch, char **outputData)
 {
-    uint8_t code;
+    uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
     {
     case ADC:
@@ -773,15 +784,15 @@ void resolveIndirectYInstruction(astBranch *branch, void **outputData)
 }
 
 // allocate source dump into output data and return length
-int assembleParseTree(ast *tree, int programOffset, void **outputData)
+int assembleParseTree(ast *tree, int programOffset, char **outputData)
 {
     labelList labelTable = (labelList){.content = malloc(sizeof(resolvedLabel)), .capacity = 1, .length = 0};
     int codeSize = fillLabelList(tree, &labelTable);
 
     *outputData = malloc(codeSize);
 
-    void *canonicalStart = *outputData;
-    void *dataHead = *outputData;
+    char *canonicalStart = *outputData;
+    char *dataHead = *outputData;
 
     for (int i = 0; i < tree->length; i++)
     {
@@ -837,5 +848,10 @@ int assembleParseTree(ast *tree, int programOffset, void **outputData)
         default:
             break;
         }
+
+        
     }
+
+    freeLabelList(&labelTable);
+    return codeSize;
 }
