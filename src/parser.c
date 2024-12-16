@@ -9,7 +9,7 @@
 
 bool isOpcode(unsigned short id)
 {
-    return (id > ADC && id < TYA);
+    return (id >= ADC && id <= TYA);
 }
 
 bool expectLineEnd(token **lineStart)
@@ -338,7 +338,7 @@ bool parseZeroPageInstruction(unsigned short id, token **lineStart, ast *branche
         *lineStart += 1;
         return expectLineEnd(lineStart);
     }
-
+    
     return false;
 }
 
@@ -395,7 +395,6 @@ bool parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast 
         }
         else
         {
-            printf("Hai\n");
             return false;
         }
     }
@@ -501,7 +500,7 @@ ast *parseTokenList(tokenList *tokens)
     {
         if (!parseLine(&currentToken, out))
         {
-            printf("%i", (int)currentToken->tokenId);
+            printf("%i", (int)(currentToken-3)->tokenId);
             printf("failed during parsing!\n");
             exit(-1);
         }

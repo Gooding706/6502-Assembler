@@ -39,7 +39,7 @@ void pushLabel(char *label, uint16_t offset, labelList *list)
 
 void freeLabelList(labelList *list)
 {
-    for(int i = 0; i < list->length; i++)
+    for (int i = 0; i < list->length; i++)
     {
         free(list->content[i].labelText);
     }
@@ -540,7 +540,8 @@ void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int pr
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
     uint16_t address = resolveAddress(branch->data.relativeMode.address, labelTable, programOffset);
-    int offsetValue = (address - (instructionOffset + 2));
+    int offsetValue = (address - ((instructionOffset + programOffset) + 2));
+
     if (abs(offsetValue) > 127)
     {
         printf("branches must not exceed the range -127 to 127");
@@ -560,6 +561,9 @@ void resolveZeroPageInstruction(astBranch *branch, char **outputData)
         break;
     case AND:
         code = 0x25;
+        break;
+    case BIT:
+        code = 0x24;
         break;
     case ASL:
         code = 0x06;
@@ -620,6 +624,8 @@ void resolveZeroPageInstruction(astBranch *branch, char **outputData)
     }
 
     *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+    *((uint8_t *)*outputData) = branch->data.zeroPageMode.value;
     *outputData += 1;
 }
 
@@ -682,6 +688,8 @@ void resolveZeroPageXInstruction(astBranch *branch, char **outputData)
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
+    *((uint8_t *)*outputData) = branch->data.zeroPageMode.value;
+    *outputData += 1;
 }
 
 void resolveZeroPageYInstruction(astBranch *branch, char **outputData)
@@ -699,6 +707,8 @@ void resolveZeroPageYInstruction(astBranch *branch, char **outputData)
         break;
     }
     *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+    *((uint8_t *)*outputData) = branch->data.zeroPageMode.value;
     *outputData += 1;
 }
 
@@ -745,6 +755,8 @@ void resolveIndirectXInstruction(astBranch *branch, char **outputData)
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
+    *((uint8_t *)*outputData) = branch->data.indirectRegisterMode.value;
+    *outputData += 1;
 }
 
 void resolveIndirectYInstruction(astBranch *branch, char **outputData)
@@ -780,6 +792,8 @@ void resolveIndirectYInstruction(astBranch *branch, char **outputData)
         break;
     }
     *((uint8_t *)*outputData) = code;
+    *outputData += 1;
+    *((uint8_t *)*outputData) = branch->data.indirectRegisterMode.value;
     *outputData += 1;
 }
 
@@ -848,8 +862,6 @@ int assembleParseTree(ast *tree, int programOffset, char **outputData)
         default:
             break;
         }
-
-        
     }
 
     freeLabelList(&labelTable);

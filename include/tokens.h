@@ -95,7 +95,7 @@
 #define isIndirectXAddressable(instruction) isTokenOfType(instruction, 8, ADC, AND, CMP, EOR, LDA, ORA, SBC, STA)
 #define isIndirectYAddressable(instruction) isTokenOfType(instruction, 8, ADC, AND, CMP, EOR, LDA, ORA, SBC, STA)
 #define isRelativeAddressable(instruction) isTokenOfType(instruction, 8, BCC, BCS, BEQ, BMI, BNE, BPL, BVC, BVS)
-#define isZeroPageAddressable(instruction) isTokenOfType(instruction, 20, ADC, AND, ASL, CMP, CPX, CPY, DEX, EOR, INC, LDA, LDX, LDY, LSR, ORA, ROL, ROR, SBC, STA, STX, STY)
+#define isZeroPageAddressable(instruction) isTokenOfType(instruction, 21, ADC, AND, ASL,BIT, CMP, CPX, CPY, DEC, EOR, INC, LDA, LDX, LDY, LSR, ORA, ROL, ROR, SBC, STA, STX, STY)
 #define isZeroPageXAddressable(instruction) isTokenOfType(instruction, 16, ADC, AND, ASL, CMP, DEC, EOR, INC, LDA, LDY, LSR, ORA, ROL, ROR, SBC, STA, STY)
 #define isZeroPageYAddressable(instruction) isTokenOfType(instruction, 2, LDX, STX)
 
