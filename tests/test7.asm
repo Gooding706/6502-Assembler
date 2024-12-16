@@ -1,1 +1,5 @@
-lda #%001
+data:
+.byte $45, $ff
+
+label:
+    lda ($ffff)

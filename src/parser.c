@@ -12,9 +12,13 @@ bool isOpcode(unsigned short id)
     return (id >= ADC && id <= TYA);
 }
 
-bool expectLineEnd(token **lineStart)
+int expectLineEnd(token **lineStart)
 {
-    return ((*lineStart)->tokenId == NEWLINE);
+    if((*lineStart)->tokenId == NEWLINE)
+    {
+        return SUCCESS;
+    }
+    return MISSINGNEWLINE;
 }
 
 char *takeLabelTokenValue(token *t)
@@ -24,7 +28,7 @@ char *takeLabelTokenValue(token *t)
     return out;
 }
 
-bool parseLabel(token **lineStart, ast *branches)
+int parseLabel(token **lineStart, ast *branches)
 {
     if ((*lineStart)->tokenId == COLON)
     {
@@ -34,8 +38,7 @@ bool parseLabel(token **lineStart, ast *branches)
         return expectLineEnd(lineStart);
     }
 
-    printf("Expected COLON\n");
-    return false;
+    return MISSINGCOLON;
 }
 
 // take the value from a byte token and free any allocated data
@@ -55,7 +58,7 @@ uint16_t takeWordTokenValue(token *t)
     return out;
 }
 
-bool readByteAny(token **lineStart, uint8_t *location)
+int readByteAny(token **lineStart, uint8_t *location)
 {
     switch ((*lineStart)->tokenId)
     {
@@ -63,30 +66,28 @@ bool readByteAny(token **lineStart, uint8_t *location)
         *lineStart += 1;
         if ((*lineStart)->tokenId != HEXNUMBER_8)
         {
-            printf("Expected HEX8\n");
-            return false;
+            return MISSINGHEXBYTE;
         }
         *location = takeByteTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
     case PERCENT:
         *lineStart += 1;
         if ((*lineStart)->tokenId != BINARYNUMBER_8)
         {
-            printf("Expected BINARY8\n");
-            return false;
+            return MISSINGBINBYTE;
         }
         *location = takeByteTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
     case NUMBER_8:
         *location = takeByteTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
     default:
         location = NULL;
-        return false;
+        return MISSINGBYTETYPE;
     }
 }
 
-bool parseByteList(token **lineStart, ast *branches)
+int parseByteList(token **lineStart, ast *branches)
 {
     u8List byteList = {.content = malloc(1), .capacity = 1, .length = 0};
     bool expectComma = false;
@@ -94,15 +95,15 @@ bool parseByteList(token **lineStart, ast *branches)
     {
         if (expectComma && (*lineStart)->tokenId != COMMA)
         {
-            printf("Expected COMMA\n");
-            return false;
+            return MISSINGCOMMA;
         }
         else if (!expectComma)
         {
             pushU8(0, &byteList);
-            if (!readByteAny(lineStart, &byteList.content[byteList.length - 1]))
+            int returnValue = readByteAny(lineStart, &byteList.content[byteList.length - 1]);
+            if (returnValue != SUCCESS)
             {
-                return false;
+                return returnValue;
             }
         }
 
@@ -113,10 +114,10 @@ bool parseByteList(token **lineStart, ast *branches)
     astBranch outBranch = (astBranch){.branchType = directiveBytes, .data.byteDirective = byteList};
     pushBranch(outBranch, branches);
 
-    return true;
+    return SUCCESS;
 }
 
-bool readWordAny(token **lineStart, address_t *location)
+int readWordAny(token **lineStart, address_t *location)
 {
     switch ((*lineStart)->tokenId)
     {
@@ -124,26 +125,24 @@ bool readWordAny(token **lineStart, address_t *location)
         *lineStart += 1;
         if ((*lineStart)->tokenId != HEXNUMBER_16)
         {
-            printf("Expected HEX16\n");
-            return false;
+            return MISSINGHEXWORD;
         }
         location->tag = constant;
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
     case PERCENT:
         *lineStart += 1;
         if ((*lineStart)->tokenId != BINARYNUMBER_16)
         {
-            printf("Expected BINARY16\n");
-            return false;
+            return MISSINGBINWORD;
         }
         location->tag = constant;
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
     case NUMBER_16:
         location->tag = constant;
         location->data.addressLiteral = takeWordTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
     case NUMBER_8:
     {
         // 8 bit numeric literals can be interpreted as 16 bit
@@ -152,19 +151,19 @@ bool readWordAny(token **lineStart, address_t *location)
         location->tag = constant;
         location->data.addressLiteral = extended;
     }
-        return true;
+        return SUCCESS;
     case LABEL:
         location->tag = unresolvedLabel;
         location->data.labelText = takeLabelTokenValue(*lineStart);
-        return true;
+        return SUCCESS;
 
     default:
         location = NULL;
-        return false;
+        return MISSINGWORDTYPE;
     }
 }
 
-bool parseWordList(token **lineStart, ast *branches)
+int parseWordList(token **lineStart, ast *branches)
 {
     u16List wordList = {.content = malloc(sizeof(address_t)), .capacity = 1, .length = 0};
     bool expectComma = false;
@@ -172,15 +171,15 @@ bool parseWordList(token **lineStart, ast *branches)
     {
         if (expectComma && (*lineStart)->tokenId != COMMA)
         {
-            printf("Expected COMMA\n");
-            return false;
+            return MISSINGCOMMA;
         }
         else if (!expectComma)
         {
             pushU16(0, &wordList);
-            if (!readWordAny(lineStart, &wordList.content[wordList.length - 1]))
+            int returnValue = readWordAny(lineStart, &wordList.content[wordList.length - 1]);
+            if (returnValue != SUCCESS)
             {
-                return false;
+                return returnValue;
             }
         }
 
@@ -191,10 +190,10 @@ bool parseWordList(token **lineStart, ast *branches)
     astBranch outBranch = (astBranch){.branchType = directiveWords, .data.wordDirective = wordList};
     pushBranch(outBranch, branches);
 
-    return true;
+    return SUCCESS;
 }
 
-bool parseDirective(token **lineStart, ast *branches)
+int parseDirective(token **lineStart, ast *branches)
 {
     if ((*lineStart)->tokenId == BYTEDIRECTIVE)
     {
@@ -206,10 +205,9 @@ bool parseDirective(token **lineStart, ast *branches)
         *lineStart += 1;
         return parseWordList(lineStart, branches);
     }
-    printf("Expected DIRECTIVE\n");
-    return false;
+    return MISSINGDIRECTIVE;
 }
-bool parseRelativeInstruction(unsigned short id, token **lineStart, ast *branches)
+int parseRelativeInstruction(unsigned short id, token **lineStart, ast *branches)
 {
     if ((*lineStart)->tokenId == LABEL)
     {
@@ -223,7 +221,7 @@ bool parseRelativeInstruction(unsigned short id, token **lineStart, ast *branche
     }
     else
     {
-        return false;
+        return MISSINGLABEL;
     }
 }
 
@@ -266,12 +264,13 @@ bool isByteType(token **lineStart)
 }
 
 // TODO: not a fan of the program flow within this function
-bool parseAbsoluteInstruction(unsigned short id, token **lineStart, ast *branches)
+int parseAbsoluteInstruction(unsigned short id, token **lineStart, ast *branches)
 {
     address_t val;
-    if (!readWordAny(lineStart, &val))
+    int returnValue = readWordAny(lineStart, &val);
+    if (returnValue != SUCCESS)
     {
-        return false;
+        return returnValue;
     }
 
     *lineStart += 1;
@@ -279,7 +278,7 @@ bool parseAbsoluteInstruction(unsigned short id, token **lineStart, ast *branche
     if ((*lineStart)->tokenId == NEWLINE && isAbsoluteAddressable(id))
     {
         pushBranch((astBranch){.branchType = absolute, .data.absoluteMode = instr}, branches);
-        return true;
+        return SUCCESS;
     }
     else if ((*lineStart)->tokenId == COMMA)
     {
@@ -295,29 +294,30 @@ bool parseAbsoluteInstruction(unsigned short id, token **lineStart, ast *branche
         }
         else
         {
-            return false;
+            return MISSINGREGISTERLABEL;
         }
 
         *lineStart += 1;
         return expectLineEnd(lineStart);
     }
 
-    return false;
+    return MISSINGNEWLINE;
 }
 
-bool parseZeroPageInstruction(unsigned short id, token **lineStart, ast *branches)
+int parseZeroPageInstruction(unsigned short id, token **lineStart, ast *branches)
 {
     uint8_t val;
-    if (!readByteAny(lineStart, &val))
+    int returnValue = readByteAny(lineStart, &val);
+    if (returnValue != SUCCESS)
     {
-        return false;
+        return returnValue;
     }
     *lineStart += 1;
     zeroPageInstruction instr = (zeroPageInstruction){.opcode = id, .value = val};
     if ((*lineStart)->tokenId == NEWLINE && isZeroPageAddressable(id))
     {
         pushBranch((astBranch){.branchType = zeroPage, .data.zeroPageMode = instr}, branches);
-        return true;
+        return SUCCESS;
     }
     else if ((*lineStart)->tokenId == COMMA)
     {
@@ -332,22 +332,28 @@ bool parseZeroPageInstruction(unsigned short id, token **lineStart, ast *branche
         }
         else
         {
-            return false;
+            return MISSINGREGISTERLABEL;
         }
 
         *lineStart += 1;
         return expectLineEnd(lineStart);
     }
     
-    return false;
+    return MISSINGNEWLINE;
 }
 
-bool parseImmediateInstruction(unsigned short id, token **lineStart, ast *branches)
+int parseImmediateInstruction(unsigned short id, token **lineStart, ast *branches)
 {
     uint8_t val;
-    if (!readByteAny(lineStart, &val) || !(isImmediateAddressable(id)))
+    int returnValue = readByteAny(lineStart, &val);
+    if (returnValue != SUCCESS)
     {
-        return false;
+        return returnValue;
+    }
+
+    if(!isImmediateAddressable(id))
+    {
+        return NOTIMMEDIATEADDRESSABLE;
     }
 
     immediateInstruction instr = (immediateInstruction){.opcode = id, .value = val};
@@ -357,7 +363,7 @@ bool parseImmediateInstruction(unsigned short id, token **lineStart, ast *branch
     return expectLineEnd(lineStart);
 }
 
-bool parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast *branches)
+int parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast *branches)
 {
     uint8_t val;
     readByteAny(lineStart, &val);
@@ -377,7 +383,7 @@ bool parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast 
         }
         else
         {
-            return false;
+            return MISSINGYREGISTER;
         }
     }
     // x indirect
@@ -395,14 +401,14 @@ bool parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast 
         }
         else
         {
-            return false;
+            return MISSINGXREGISTER;
         }
     }
 
-    return false;
+    return MISSINGREGISTERLABEL;
 }
 
-bool parseIndirectInstruction(unsigned short id, token **lineStart, ast *branches)
+int parseIndirectInstruction(unsigned short id, token **lineStart, ast *branches)
 {
     if (isWordType(lineStart) && isIndirectAddressable(id))
     {
@@ -424,10 +430,10 @@ bool parseIndirectInstruction(unsigned short id, token **lineStart, ast *branche
         return parseRegisterIndirectInstruction(id, lineStart, branches);
     }
 
-    return false;
+    return MISSINGCLOSEPAREN;
 }
 
-bool parseOpcode(unsigned short id, token **lineStart, ast *branches)
+int parseOpcode(unsigned short id, token **lineStart, ast *branches)
 {
     if (isImpliedAddressable(id))
     {
@@ -464,10 +470,10 @@ bool parseOpcode(unsigned short id, token **lineStart, ast *branches)
         return parseIndirectInstruction(id, lineStart, branches);
     }
 
-    return false;
+    return UNABLETOINFERADDRESSINGMODE;
 }
 
-bool parseLine(token **lineStart, ast *branches)
+int parseLine(token **lineStart, ast *branches)
 {
 
     if ((*lineStart)->tokenId == LABEL)
@@ -487,7 +493,7 @@ bool parseLine(token **lineStart, ast *branches)
         return parseOpcode(opcodeId, lineStart, branches);
     }
 
-    return false;
+    return INVALIDELINESTART;
 }
 
 ast *parseTokenList(tokenList *tokens)
@@ -498,10 +504,10 @@ ast *parseTokenList(tokenList *tokens)
     token *currentToken = tokens->content;
     while (currentToken->tokenId != FILEEND)
     {
-        if (!parseLine(&currentToken, out))
+        int returnValue = parseLine(&currentToken, out);
+        if (returnValue != SUCCESS)
         {
-            printf("%i", (int)(currentToken-3)->tokenId);
-            printf("failed during parsing!\n");
+            printError(returnValue, currentToken->err);
             exit(-1);
         }
         currentToken++;

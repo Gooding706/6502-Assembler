@@ -436,6 +436,11 @@ int tokenizeMultiChar(char **tokenStart, tokenList *tokens)
         *tokenStart += 1;
     }
 
+    if(canonicalStart == *tokenStart)
+    {
+        return UNRECOGNIZEDLABELSYMBOL;
+    }
+
     bool isOpcode = false;
     if ((*tokenStart - canonicalStart) == 1)
     {
@@ -446,7 +451,7 @@ int tokenizeMultiChar(char **tokenStart, tokenList *tokens)
         isOpcode = tokenizeOpcode(canonicalStart, tokens);
     }
 
-    return (isOpcode) ? SUCCESS : tokenizeLabel(canonicalStart, (*tokenStart - canonicalStart), tokens);
+    return ((isOpcode) ? SUCCESS : tokenizeLabel(canonicalStart, (*tokenStart - canonicalStart), tokens));
 }
 
 int tokenizeDirective(char **tokenStart, tokenList *tokens)
@@ -596,8 +601,8 @@ void tokenizeFile(char *content, tokenList *tokens)
 
         if (previousLen < tokens->length)
         {
-            addErrorData(lineNumber, lineStart, tokens->content + previousLen, tokens->length-previousLen);
             pushToken((token){NEWLINE, NULL, NULL}, tokens);
+            addErrorData(lineNumber, lineStart, tokens->content + previousLen, tokens->length-previousLen);
         }
 
         previousLen = tokens->length;
