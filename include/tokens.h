@@ -3,6 +3,7 @@
 #define TOKEN
 
 #include <stdbool.h>
+#include <errors.h>
 
 #define ADC 0
 #define AND 1
@@ -103,6 +104,7 @@ typedef struct
 {
     unsigned short tokenId;
     char *textContent;
+    errorData* err;
 } token;
 
 typedef struct

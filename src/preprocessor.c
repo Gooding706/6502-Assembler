@@ -213,7 +213,5 @@ void preprocess(char **text)
     fillDefineList(text, &defines);
     replaceFromDefineList(text, &defines);
 
-    printf("%s\n", *text);
-
     freeDefineList(&defines);
 }

@@ -18,6 +18,7 @@ void freeTokenList(tokenList *list)
     for (int i = 0; i < list->length; i++)
     {
         free(list->content[i].textContent);
+        free(list->content[i].err);
     }
     free(list->content);
 }

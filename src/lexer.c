@@ -5,6 +5,8 @@
 #include <ctype.h>
 #include <memory.h>
 
+#include <errors.h>
+
 char *loadFile(const char *path)
 {
     FILE *f = fopen(path, "r");
@@ -13,6 +15,7 @@ char *loadFile(const char *path)
         printf("unable to open file '%s'\n", path);
         exit(-1);
     }
+
     fseek(f, 0L, SEEK_END);
     size_t length = ftell(f);
     rewind(f);
@@ -25,7 +28,7 @@ char *loadFile(const char *path)
     return out;
 }
 
-bool tokenizeHex(char **tokenStart, tokenList *tokens)
+int tokenizeHex(char **tokenStart, tokenList *tokens)
 {
     char *canonicalStart = *tokenStart;
     while (isxdigit(**tokenStart))
@@ -35,23 +38,23 @@ bool tokenizeHex(char **tokenStart, tokenList *tokens)
 
     if ((*tokenStart - canonicalStart) == 4)
     {
-        token t = (token){HEXNUMBER_16, malloc(2)};
+        token t = (token){HEXNUMBER_16, malloc(2), NULL};
         *((uint16_t *)t.textContent) = strtoul(canonicalStart, NULL, 16);
         pushToken(t, tokens);
-        return true;
+        return SUCCESS;
     }
     else if ((*tokenStart - canonicalStart) == 2)
     {
-        token t = (token){HEXNUMBER_8, malloc(1)};
+        token t = (token){HEXNUMBER_8, malloc(1), NULL};
         *((uint8_t *)t.textContent) = strtoul(canonicalStart, NULL, 16);
         pushToken(t, tokens);
-        return true;
+        return SUCCESS;
     }
 
-    return false;
+    return BADHEXLENGTH;
 }
 
-bool tokenizeBin(char **tokenStart, tokenList *tokens)
+int tokenizeBin(char **tokenStart, tokenList *tokens)
 {
     char *canonicalStart = *tokenStart;
     while (**tokenStart == '0' || **tokenStart == '1')
@@ -61,23 +64,23 @@ bool tokenizeBin(char **tokenStart, tokenList *tokens)
 
     if ((*tokenStart - canonicalStart) == 16)
     {
-        token t = (token){BINARYNUMBER_16, malloc(2)};
+        token t = (token){BINARYNUMBER_16, malloc(2), NULL};
         *((uint16_t *)t.textContent) = strtoul(canonicalStart, NULL, 2);
         pushToken(t, tokens);
-        return true;
+        return SUCCESS;
     }
     else if ((*tokenStart - canonicalStart) == 8)
     {
-        token t = (token){BINARYNUMBER_8, malloc(1)};
+        token t = (token){BINARYNUMBER_8, malloc(1), NULL};
         *((uint8_t *)t.textContent) = strtoul(canonicalStart, NULL, 2);
         pushToken(t, tokens);
-        return true;
+        return SUCCESS;
     }
 
-    return false;
+    return BADBINARYLENGTH;
 }
 
-bool tokenizeNum(char **tokenStart, tokenList *tokens)
+int tokenizeNum(char **tokenStart, tokenList *tokens)
 {
     char *canonicalStart = *tokenStart;
     while (isnumber(**tokenStart))
@@ -89,51 +92,52 @@ bool tokenizeNum(char **tokenStart, tokenList *tokens)
 
     if (value > UINT8_MAX && value < UINT16_MAX)
     {
-        token t = (token){NUMBER_16, malloc(2)};
+        token t = (token){NUMBER_16, malloc(2), NULL};
         *((uint16_t *)t.textContent) = value;
         pushToken(t, tokens);
-        return true;
+        return SUCCESS;
     }
     else if (value < UINT8_MAX)
     {
-        token t = (token){NUMBER_8, malloc(1)};
+        token t = (token){NUMBER_8, malloc(1), NULL};
         *((uint8_t *)t.textContent) = value;
         pushToken(t, tokens);
-        return true;
+        return SUCCESS;
     }
 
-    return false;
+    return NUMBEROUTOFRANGE;
 }
 
-bool tokenizeSingleChar(char chr, tokenList *tokens)
+int tokenizeSingleChar(char chr, tokenList *tokens)
 {
     switch (tolower(chr))
     {
     case 'x':
-        pushToken((token){XREGISTER, NULL}, tokens);
-        return true;
+        pushToken((token){XREGISTER, NULL, NULL}, tokens);
+        return SUCCESS;
     case 'y':
-        pushToken((token){YREGISTER, NULL}, tokens);
-        return true;
+        pushToken((token){YREGISTER, NULL, NULL}, tokens);
+        return SUCCESS;
     default:
     {
         char *allocated = malloc(1);
         *allocated = chr;
-        pushToken((token){LABEL, allocated}, tokens);
+        pushToken((token){LABEL, allocated, NULL}, tokens);
     }
     break;
     }
-    return true;
+
+    return SUCCESS;
 }
 
-bool tokenizeLabel(char *tokenStart, int length, tokenList *tokens)
+int tokenizeLabel(char *tokenStart, int length, tokenList *tokens)
 {
     char *copiedStr = malloc(length + 1);
     copiedStr[length] = '\0';
     memcpy(copiedStr, tokenStart, length);
-    token t = (token){LABEL, copiedStr};
+    token t = (token){LABEL, copiedStr, NULL};
     pushToken(t, tokens);
-    return true;
+    return SUCCESS;
 }
 
 bool tokenizeOpcode(char *tokenStart, tokenList *tokens)
@@ -142,289 +146,289 @@ bool tokenizeOpcode(char *tokenStart, tokenList *tokens)
 
     if (!memcmp(upper, "ADC", 3))
     {
-        pushToken((token){ADC, NULL}, tokens);
+        pushToken((token){ADC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "AND", 3))
     {
-        pushToken((token){AND, NULL}, tokens);
+        pushToken((token){AND, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "ASL", 3))
     {
-        pushToken((token){ASL, NULL}, tokens);
+        pushToken((token){ASL, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BCC", 3))
     {
-        pushToken((token){BCC, NULL}, tokens);
+        pushToken((token){BCC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BCS", 3))
     {
-        pushToken((token){BCS, NULL}, tokens);
+        pushToken((token){BCS, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BEQ", 3))
     {
-        pushToken((token){BEQ, NULL}, tokens);
+        pushToken((token){BEQ, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BIT", 3))
     {
-        pushToken((token){BIT, NULL}, tokens);
+        pushToken((token){BIT, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BMI", 3))
     {
-        pushToken((token){BMI, NULL}, tokens);
+        pushToken((token){BMI, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BNE", 3))
     {
-        pushToken((token){BNE, NULL}, tokens);
+        pushToken((token){BNE, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BPL", 3))
     {
-        pushToken((token){BPL, NULL}, tokens);
+        pushToken((token){BPL, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BRK", 3))
     {
-        pushToken((token){BRK, NULL}, tokens);
+        pushToken((token){BRK, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BVC", 3))
     {
-        pushToken((token){BVC, NULL}, tokens);
+        pushToken((token){BVC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "BVS", 3))
     {
-        pushToken((token){BVS, NULL}, tokens);
+        pushToken((token){BVS, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CLC", 3))
     {
-        pushToken((token){CLC, NULL}, tokens);
+        pushToken((token){CLC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CLD", 3))
     {
-        pushToken((token){CLD, NULL}, tokens);
+        pushToken((token){CLD, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CLI", 3))
     {
-        pushToken((token){CLI, NULL}, tokens);
+        pushToken((token){CLI, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CLV", 3))
     {
-        pushToken((token){CLV, NULL}, tokens);
+        pushToken((token){CLV, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CMP", 3))
     {
-        pushToken((token){CMP, NULL}, tokens);
+        pushToken((token){CMP, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CPX", 3))
     {
-        pushToken((token){CPX, NULL}, tokens);
+        pushToken((token){CPX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "CPY", 3))
     {
-        pushToken((token){CPY, NULL}, tokens);
+        pushToken((token){CPY, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "DEC", 3))
     {
-        pushToken((token){DEC, NULL}, tokens);
+        pushToken((token){DEC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "DEX", 3))
     {
-        pushToken((token){DEX, NULL}, tokens);
+        pushToken((token){DEX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "DEY", 3))
     {
-        pushToken((token){DEY, NULL}, tokens);
+        pushToken((token){DEY, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "EOR", 3))
     {
-        pushToken((token){EOR, NULL}, tokens);
+        pushToken((token){EOR, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "INC", 3))
     {
-        pushToken((token){INC, NULL}, tokens);
+        pushToken((token){INC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "INX", 3))
     {
-        pushToken((token){INX, NULL}, tokens);
+        pushToken((token){INX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "INY", 3))
     {
-        pushToken((token){INY, NULL}, tokens);
+        pushToken((token){INY, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "JMP", 3))
     {
-        pushToken((token){JMP, NULL}, tokens);
+        pushToken((token){JMP, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "JSR", 3))
     {
-        pushToken((token){JSR, NULL}, tokens);
+        pushToken((token){JSR, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "LDA", 3))
     {
-        pushToken((token){LDA, NULL}, tokens);
+        pushToken((token){LDA, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "LDX", 3))
     {
-        pushToken((token){LDX, NULL}, tokens);
+        pushToken((token){LDX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "LDY", 3))
     {
-        pushToken((token){LDY, NULL}, tokens);
+        pushToken((token){LDY, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "LSR", 3))
     {
-        pushToken((token){LSR, NULL}, tokens);
+        pushToken((token){LSR, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "NOP", 3))
     {
-        pushToken((token){NOP, NULL}, tokens);
+        pushToken((token){NOP, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "ORA", 3))
     {
-        pushToken((token){ORA, NULL}, tokens);
+        pushToken((token){ORA, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "PHA", 3))
     {
-        pushToken((token){PHA, NULL}, tokens);
+        pushToken((token){PHA, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "PHP", 3))
     {
-        pushToken((token){PHP, NULL}, tokens);
+        pushToken((token){PHP, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "PLA", 3))
     {
-        pushToken((token){PLA, NULL}, tokens);
+        pushToken((token){PLA, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "PLP", 3))
     {
-        pushToken((token){PLP, NULL}, tokens);
+        pushToken((token){PLP, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "ROL", 3))
     {
-        pushToken((token){ROL, NULL}, tokens);
+        pushToken((token){ROL, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "ROR", 3))
     {
-        pushToken((token){ROR, NULL}, tokens);
+        pushToken((token){ROR, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "RTI", 3))
     {
-        pushToken((token){RTI, NULL}, tokens);
+        pushToken((token){RTI, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "RTS", 3))
     {
-        pushToken((token){RTS, NULL}, tokens);
+        pushToken((token){RTS, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "SBC", 3))
     {
-        pushToken((token){SBC, NULL}, tokens);
+        pushToken((token){SBC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "SEC", 3))
     {
-        pushToken((token){SEC, NULL}, tokens);
+        pushToken((token){SEC, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "SED", 3))
     {
-        pushToken((token){SED, NULL}, tokens);
+        pushToken((token){SED, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "SEI", 3))
     {
-        pushToken((token){SEI, NULL}, tokens);
+        pushToken((token){SEI, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "STA", 3))
     {
-        pushToken((token){STA, NULL}, tokens);
+        pushToken((token){STA, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "STX", 3))
     {
-        pushToken((token){STX, NULL}, tokens);
+        pushToken((token){STX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "STY", 3))
     {
-        pushToken((token){STY, NULL}, tokens);
+        pushToken((token){STY, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "TAX", 3))
     {
-        pushToken((token){TAX, NULL}, tokens);
+        pushToken((token){TAX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "TAY", 3))
     {
-        pushToken((token){TAY, NULL}, tokens);
+        pushToken((token){TAY, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "TSX", 3))
     {
-        pushToken((token){TSX, NULL}, tokens);
+        pushToken((token){TSX, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "TXA", 3))
     {
-        pushToken((token){TXA, NULL}, tokens);
+        pushToken((token){TXA, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "TXS", 3))
     {
-        pushToken((token){TXS, NULL}, tokens);
+        pushToken((token){TXS, NULL, NULL}, tokens);
         return true;
     }
     else if (!memcmp(upper, "TYA", 3))
     {
-        pushToken((token){TYA, NULL}, tokens);
+        pushToken((token){TYA, NULL, NULL}, tokens);
         return true;
     }
 
     return false;
 }
 
-bool tokenizeMultiChar(char **tokenStart, tokenList *tokens)
+int tokenizeMultiChar(char **tokenStart, tokenList *tokens)
 {
     char *canonicalStart = *tokenStart;
     while (isalnum(**tokenStart) || **tokenStart == '_')
@@ -432,20 +436,20 @@ bool tokenizeMultiChar(char **tokenStart, tokenList *tokens)
         *tokenStart += 1;
     }
 
+    bool isOpcode = false;
     if ((*tokenStart - canonicalStart) == 1)
     {
         return tokenizeSingleChar(*canonicalStart, tokens);
     }
     else if ((*tokenStart - canonicalStart) == 3)
     {
-        
-        return tokenizeOpcode(canonicalStart, tokens);
+        isOpcode = tokenizeOpcode(canonicalStart, tokens);
     }
 
-    return tokenizeLabel(canonicalStart, (*tokenStart - canonicalStart), tokens);
+    return (isOpcode) ? SUCCESS : tokenizeLabel(canonicalStart, (*tokenStart - canonicalStart), tokens);
 }
 
-bool tokenizeDirective(char **tokenStart, tokenList *tokens)
+int tokenizeDirective(char **tokenStart, tokenList *tokens)
 {
     char *canonicalStart = *tokenStart;
     while (isalnum(**tokenStart))
@@ -459,71 +463,70 @@ bool tokenizeDirective(char **tokenStart, tokenList *tokens)
     {
         if (!memcmp(canonicalStart, "byte", 4))
         {
-            pushToken((token){BYTEDIRECTIVE, NULL}, tokens);
-            return true;
+            pushToken((token){BYTEDIRECTIVE, NULL, NULL}, tokens);
+            return SUCCESS;
         }
         else if (!memcmp(canonicalStart, "word", 4))
         {
-            pushToken((token){WORDDIRECTIVE, NULL}, tokens);
-            return true;
+            pushToken((token){WORDDIRECTIVE, NULL, NULL}, tokens);
+            return SUCCESS;
         }
     }
-    return false;
+    return UNDEFINEDDIRECTIVE;
 }
 
 void readWhiteSpace(char **tokenStart)
 {
     while (**tokenStart == ' ' || **tokenStart == '\t' || **tokenStart == '\v')
     {
-
         *tokenStart += 1;
     }
 }
 
-bool tokenize(char **tokenStart, tokenList *tokens)
+int tokenize(char **tokenStart, tokenList *tokens)
 {
     readWhiteSpace(tokenStart);
  
     switch (**tokenStart)
     {
     case ':':
-        pushToken((token){COLON, NULL}, tokens);
+        pushToken((token){COLON, NULL, NULL}, tokens);
         *tokenStart += 1;
-        return true;
+        return SUCCESS;
     case '#':
-        pushToken((token){HASH, NULL}, tokens);
+        pushToken((token){HASH, NULL, NULL}, tokens);
         *tokenStart += 1;
-        return true;
+        return SUCCESS;
     case '(':
-        pushToken((token){OPENPAREN, NULL}, tokens);
+        pushToken((token){OPENPAREN, NULL, NULL}, tokens);
         *tokenStart += 1;
-        return true;
+        return SUCCESS;
     case ')':
-        pushToken((token){CLOSEPAREN, NULL}, tokens);
+        pushToken((token){CLOSEPAREN, NULL, NULL}, tokens);
         *tokenStart += 1;
-        return true;
+        return SUCCESS;
     case ',':
-        pushToken((token){COMMA, NULL}, tokens);
+        pushToken((token){COMMA, NULL, NULL}, tokens);
         *tokenStart += 1;
-        return true;
+        return SUCCESS;
     case '.':
-        pushToken((token){PERIOD, NULL}, tokens);
+        pushToken((token){PERIOD, NULL, NULL}, tokens);
         *tokenStart += 1;
         return tokenizeDirective(tokenStart, tokens);
     case '\n':
-        return true;
+        return SUCCESS;
     case '\r':
-        return true;
+        return SUCCESS;
     case '\0':
-        return true;
+        return SUCCESS;
     case ';':
-        return true;
+        return SUCCESS;
     case '$':
-        pushToken((token){DOLLAR, NULL}, tokens);
+        pushToken((token){DOLLAR, NULL, NULL}, tokens);
         *tokenStart += 1;
         return tokenizeHex(tokenStart, tokens);
     case '%':
-        pushToken((token){PERCENT, NULL}, tokens);
+        pushToken((token){PERCENT, NULL, NULL}, tokens);
         *tokenStart += 1;
         return tokenizeBin(tokenStart, tokens);
     default:
@@ -531,12 +534,12 @@ bool tokenize(char **tokenStart, tokenList *tokens)
         {
             return tokenizeNum(tokenStart, tokens);
         }
-            
+         
         return tokenizeMultiChar(tokenStart, tokens);
     }
 }
 
-bool tokenizeLine(char **lineStart, tokenList *tokens)
+int tokenizeLine(char **lineStart, tokenList *tokens)
 {
     bool isComment = false;
     while (**lineStart != '\r' && **lineStart != '\n' && **lineStart != '\0')
@@ -552,37 +555,58 @@ bool tokenizeLine(char **lineStart, tokenList *tokens)
             continue;
         }
 
-        if (!tokenize(lineStart, tokens))
+        int tokenizationReturn =tokenize(lineStart, tokens);
+        if (tokenizationReturn != SUCCESS)
         {
-            return false;
+            return tokenizationReturn;
         }
     }
 
-    return true;
+    return SUCCESS;
+}
+
+void addErrorData(int lineNumber, char* lineStart, token* tokens, int numTokens)
+{
+    for(int i = 0; i <numTokens; i++)
+    {
+        errorData** newErr = &((tokens+i)->err);
+        *newErr = malloc(sizeof(errorData));
+        (*(newErr))->lineNumber = lineNumber;
+        (*(newErr))->lineStart = lineStart;
+    }
 }
 
 void tokenizeFile(char *content, tokenList *tokens)
 {
     char *currentChar = content;
     int previousLen = tokens->length;
+
+    char* lineStart = content;
+    int lineNumber = 1;
     while (*currentChar != '\0')
     {
-        if (!tokenizeLine(&currentChar, tokens))
-        {
-           // printf("%s\n", currentChar);
-            printf("failed during tokenization\n");
+        int tokenizationReturn = tokenizeLine(&currentChar, tokens);
+
+        if (tokenizationReturn != SUCCESS)
+        {   
+            errorData err = (errorData){.lineNumber = lineNumber, .lineStart = lineStart};
+            printError(tokenizationReturn, &err);
             exit(-1);
         }
 
         if (previousLen < tokens->length)
         {
-            pushToken((token){NEWLINE, NULL}, tokens);
+            addErrorData(lineNumber, lineStart, tokens->content + previousLen, tokens->length-previousLen);
+            pushToken((token){NEWLINE, NULL, NULL}, tokens);
         }
 
         previousLen = tokens->length;
         currentChar++;
+
+        lineStart = currentChar;
+        lineNumber++;
     }
 
 
-    pushToken((token){FILEEND, NULL}, tokens);
+    pushToken((token){FILEEND, NULL, NULL}, tokens);
 }
