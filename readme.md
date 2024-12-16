@@ -1,3 +1,5 @@
+## WARNING : This project is work in progress
+
 ## A 6502 Assembler
 this is a simple low level assembler for the 6502 instruction set. This project was primarily for fun and for learning rather than to be used as a legitimate tool for widespread use.
 

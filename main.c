@@ -137,7 +137,7 @@ void printAST(ast *a)
 int main()
 {
     tokenList tokens = (tokenList){.content = malloc(sizeof(token)), .capacity = 1, .length = 0};
-    char *fileContents = loadFile("tests/test5.asm");
+    char *fileContents = loadFile("tests/test7.asm");
     preprocess(&fileContents);
 
     tokenizeFile(fileContents, &tokens);
