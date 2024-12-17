@@ -121,6 +121,15 @@ void printError(int errorId, errorData *data)
     case NOTZEROPAGEYADDRESSABLE:
         printf("Attempting to use an incompatible instruction with Zero Page Y addressing");
         break;
+    case FATALGENERATORERROR:
+        printf("Fatal error during generation, this means there is a bug in the assembler's code");
+        break;
+    case BRANCHOUTOFRANGE:
+        printf("Branch instructions may only branch within the range -127 to 127");
+        break;
+    case UNKNOWNLABEL:
+        printf("Unknown label");
+        break;
     default:
         printf("error with code %i", errorId);
         break;

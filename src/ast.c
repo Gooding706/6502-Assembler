@@ -89,7 +89,8 @@ void freeAST(ast *list)
             //nothing
             break;
         }
+        free(list->content[i].err);
     }
-
+    
     free(list->content);
 }

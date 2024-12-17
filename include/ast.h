@@ -3,6 +3,7 @@
 #define AST
 
 #include <stdlib.h>
+#include <errors.h>
 
 // an adress can either be a 16 bit value or an unresolved label
 typedef struct
@@ -97,6 +98,7 @@ typedef struct
         zeroPageInstruction zeroPageMode; // zeroPage, zeroPageX, ZeroPageY
     } data;
 
+    errorData* err;
 } astBranch;
 
 typedef struct

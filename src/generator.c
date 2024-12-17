@@ -4,6 +4,7 @@
 
 #include <ast.h>
 #include <parser.h>
+#include <errors.h>
 
 typedef struct
 {
@@ -116,28 +117,25 @@ bool matchLabel(char *labelText, labelList *list, int programOffset, uint16_t *v
     return false;
 }
 
-uint16_t resolveAddress(address_t addr, labelList *list, int programOffset)
+int resolveAddress(address_t addr, labelList *list, int programOffset, uint16_t *out)
 {
     if (addr.tag == unresolvedLabel)
     {
-        uint16_t out;
-        if (!matchLabel(addr.data.labelText, list, programOffset, &out))
+        if (!matchLabel(addr.data.labelText, list, programOffset, out))
         {
-            printf("un-resolved label '%s'\n", addr.data.labelText);
-            exit(-1);
+            return UNKNOWNLABEL;
         }
-        return out;
     }
     else
     {
-        return addr.data.addressLiteral;
+        *out = addr.data.addressLiteral;
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 // TODO: convert endianess for big endian systems
-void resolveWordList(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
+int resolveWordList(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
     for (int i = 0; i < branch->data.wordDirective.length; i++)
     {
@@ -146,8 +144,7 @@ void resolveWordList(astBranch *branch, int programOffset, labelList *labelTable
         {
             if (!matchLabel(currentWord.data.labelText, labelTable, programOffset, (uint16_t *)(*outputData)))
             {
-                printf("un-resolved label '%s'", currentWord.data.labelText);
-                exit(-1);
+                return UNKNOWNLABEL;
             }
         }
         else
@@ -156,9 +153,10 @@ void resolveWordList(astBranch *branch, int programOffset, labelList *labelTable
         }
         *outputData += 2;
     }
+    return SUCCESS;
 }
 
-void resolveImpliedInstruction(astBranch *branch, char **outputData)
+int resolveImpliedInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.opcodeOnly)
@@ -239,14 +237,16 @@ void resolveImpliedInstruction(astBranch *branch, char **outputData)
         code = 0x98;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
+    return SUCCESS;
 }
 
-void resolveAccumulatorInstruction(astBranch *branch, char **outputData)
+int resolveAccumulatorInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.opcodeOnly)
@@ -264,14 +264,16 @@ void resolveAccumulatorInstruction(astBranch *branch, char **outputData)
         code = 0x6A;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
+    return SUCCESS;
 }
 
-void resolveImmediateInstruction(astBranch *branch, char **outputData)
+int resolveImmediateInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.immediateMode.opcode)
@@ -310,6 +312,7 @@ void resolveImmediateInstruction(astBranch *branch, char **outputData)
         code = 0xE9;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
@@ -317,9 +320,10 @@ void resolveImmediateInstruction(astBranch *branch, char **outputData)
     *outputData += 1;
     *((uint8_t *)*outputData) = branch->data.immediateMode.value;
     *outputData += 1;
+    return SUCCESS;
 }
 
-void resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
+int resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.absoluteMode.opcode)
@@ -394,16 +398,18 @@ void resolveAbsoluteInstruction(astBranch *branch, int programOffset, labelList 
         code = 0x8C;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
-    *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+    int returnVal = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset, (uint16_t *)*outputData);
     *outputData += 2;
+    return returnVal;
 }
 
-void resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
+int resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.absoluteMode.opcode)
@@ -454,16 +460,18 @@ void resolveAbsoluteXInstruction(astBranch *branch, int programOffset, labelList
         code = 0x9D;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
-    *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+    int returnVal = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset, (uint16_t *)*outputData);
     *outputData += 2;
+    return returnVal;
 }
 
-void resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
+int resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.absoluteMode.opcode)
@@ -496,16 +504,18 @@ void resolveAbsoluteYInstruction(astBranch *branch, int programOffset, labelList
         code = 0x99;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
-    *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+    int returnVal = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset, (uint16_t *)*outputData);
     *outputData += 2;
+    return returnVal;
 }
 
-void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int programOffset, labelList *labelTable, char **outputData)
+int resolveRelativeInstruction(astBranch *branch, int instructionOffset, int programOffset, labelList *labelTable, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.relativeMode.opcode)
@@ -535,23 +545,30 @@ void resolveRelativeInstruction(astBranch *branch, int instructionOffset, int pr
         code = 0x70;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
-    uint16_t address = resolveAddress(branch->data.relativeMode.address, labelTable, programOffset);
+    uint16_t address;
+    int returnVal = resolveAddress(branch->data.relativeMode.address, labelTable, programOffset, &address);
     int offsetValue = (address - ((instructionOffset + programOffset) + 2));
+    if (returnVal != SUCCESS)
+    {
+        return returnVal;
+    }
 
     if (abs(offsetValue) > 127)
     {
-        printf("branches must not exceed the range -127 to 127");
-        exit(-1);
+        return BRANCHOUTOFRANGE;
     }
     *((signed char *)*outputData) = (signed char)offsetValue;
     *outputData += 1;
+
+    return SUCCESS;
 }
 
-void resolveZeroPageInstruction(astBranch *branch, char **outputData)
+int resolveZeroPageInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
@@ -620,6 +637,7 @@ void resolveZeroPageInstruction(astBranch *branch, char **outputData)
         code = 0x84;
         break;
     default:
+        return FATALGENERATORERROR;
         break;
     }
 
@@ -627,9 +645,11 @@ void resolveZeroPageInstruction(astBranch *branch, char **outputData)
     *outputData += 1;
     *((uint8_t *)*outputData) = branch->data.zeroPageMode.value;
     *outputData += 1;
+
+    return SUCCESS;
 }
 
-void resolveZeroPageXInstruction(astBranch *branch, char **outputData)
+int resolveZeroPageXInstruction(astBranch *branch, char **outputData)
 {
 
     uint8_t code = 0;
@@ -684,15 +704,17 @@ void resolveZeroPageXInstruction(astBranch *branch, char **outputData)
         code = 0x94;
         break;
     default:
+    return FATALGENERATORERROR;
         break;
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
     *((uint8_t *)*outputData) = branch->data.zeroPageMode.value;
     *outputData += 1;
+    return SUCCESS;
 }
 
-void resolveZeroPageYInstruction(astBranch *branch, char **outputData)
+int resolveZeroPageYInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
@@ -704,24 +726,30 @@ void resolveZeroPageYInstruction(astBranch *branch, char **outputData)
         code = 0x96;
         break;
     default:
+    return FATALGENERATORERROR;
         break;
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
     *((uint8_t *)*outputData) = branch->data.zeroPageMode.value;
     *outputData += 1;
+    return SUCCESS;
 }
 
-void resolveIndirectInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
+int resolveIndirectInstruction(astBranch *branch, int programOffset, labelList *labelTable, char **outputData)
 {
+    int returnVal;
     if (branch->data.indirectMode.opcode == JMP)
     {
-        *((uint16_t *)*outputData) = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset);
+        returnVal = resolveAddress(branch->data.absoluteMode.address, labelTable, programOffset, (uint16_t *)*outputData);
         *outputData += 2;
+    }else{
+        return FATALGENERATORERROR;
     }
+    return returnVal;
 }
 
-void resolveIndirectXInstruction(astBranch *branch, char **outputData)
+int resolveIndirectXInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
@@ -751,15 +779,17 @@ void resolveIndirectXInstruction(astBranch *branch, char **outputData)
         code = 0x81;
         break;
     default:
+    return FATALGENERATORERROR;
         break;
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
     *((uint8_t *)*outputData) = branch->data.indirectRegisterMode.value;
     *outputData += 1;
+    return SUCCESS;
 }
 
-void resolveIndirectYInstruction(astBranch *branch, char **outputData)
+int resolveIndirectYInstruction(astBranch *branch, char **outputData)
 {
     uint8_t code = 0;
     switch (branch->data.zeroPageMode.opcode)
@@ -789,12 +819,14 @@ void resolveIndirectYInstruction(astBranch *branch, char **outputData)
         code = 0x91;
         break;
     default:
+    return FATALGENERATORERROR;
         break;
     }
     *((uint8_t *)*outputData) = code;
     *outputData += 1;
     *((uint8_t *)*outputData) = branch->data.indirectRegisterMode.value;
     *outputData += 1;
+    return SUCCESS;
 }
 
 // allocate source dump into output data and return length
@@ -811,56 +843,68 @@ int assembleParseTree(ast *tree, int programOffset, char **outputData)
     for (int i = 0; i < tree->length; i++)
     {
         astBranch currentBranch = tree->content[i];
+        int returnVal;
         switch (currentBranch.branchType)
         {
         case directiveBytes:
             memcpy(dataHead, currentBranch.data.byteDirective.content, currentBranch.data.byteDirective.length);
             dataHead += currentBranch.data.byteDirective.length;
+            returnVal = SUCCESS;
             break;
         case directiveWords:
-            resolveWordList(&currentBranch, programOffset, &labelTable, &dataHead);
+            returnVal = resolveWordList(&currentBranch, programOffset, &labelTable, &dataHead);
             break;
         case implied:
-            resolveImpliedInstruction(&currentBranch, &dataHead);
+            returnVal = resolveImpliedInstruction(&currentBranch, &dataHead);
             break;
         case accumulator:
-            resolveAccumulatorInstruction(&currentBranch, &dataHead);
+            returnVal = resolveAccumulatorInstruction(&currentBranch, &dataHead);
             break;
         case immediate:
-            resolveImmediateInstruction(&currentBranch, &dataHead);
+            returnVal = resolveImmediateInstruction(&currentBranch, &dataHead);
             break;
         case absolute:
-            resolveAbsoluteInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            returnVal = resolveAbsoluteInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
             break;
         case absoluteX:
-            resolveAbsoluteXInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            returnVal = resolveAbsoluteXInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
             break;
         case absoluteY:
-            resolveAbsoluteYInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            returnVal = resolveAbsoluteYInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
             break;
         case relative:
-            resolveRelativeInstruction(&currentBranch, (int)(dataHead - canonicalStart), programOffset, &labelTable, &dataHead);
+            returnVal = resolveRelativeInstruction(&currentBranch, (int)(dataHead - canonicalStart), programOffset, &labelTable, &dataHead);
             break;
         case zeroPage:
-            resolveZeroPageInstruction(&currentBranch, &dataHead);
+            returnVal = resolveZeroPageInstruction(&currentBranch, &dataHead);
             break;
         case zeroPageX:
-            resolveZeroPageXInstruction(&currentBranch, &dataHead);
+            returnVal = resolveZeroPageXInstruction(&currentBranch, &dataHead);
             break;
         case zeroPageY:
-            resolveZeroPageYInstruction(&currentBranch, &dataHead);
+            returnVal = resolveZeroPageYInstruction(&currentBranch, &dataHead);
             break;
         case indirect:
-            resolveIndirectInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
+            returnVal = resolveIndirectInstruction(&currentBranch, programOffset, &labelTable, &dataHead);
             break;
         case indirectX:
-            resolveIndirectXInstruction(&currentBranch, &dataHead);
+            returnVal = resolveIndirectXInstruction(&currentBranch, &dataHead);
             break;
         case indirectY:
-            resolveIndirectYInstruction(&currentBranch, &dataHead);
+            returnVal = resolveIndirectYInstruction(&currentBranch, &dataHead);
+            break;
+        case label:
+            returnVal = SUCCESS;
             break;
         default:
+            returnVal = FATALGENERATORERROR;
             break;
+        }
+
+        if (returnVal != SUCCESS)
+        {
+            printError(returnVal, currentBranch.err);
+            exit(-1);
         }
     }
 
