@@ -16,7 +16,6 @@ Labels reference a specific place in code and are useful in branch instructions.
 Comments are prefixed with a ';'.
 
 ## What am I still working on?
-Error handling is pretty abysmal at the moment and needs quite a bit of attention.
 
 I would like to add a '.include' preprocessor directive for multi-file projects.
 
