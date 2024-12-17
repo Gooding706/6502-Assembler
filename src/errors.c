@@ -13,6 +13,7 @@ void printToLineEnd(char *lineStart)
 
 void printError(int errorId, errorData *data)
 {
+    printf("[" "\033[1;91m" "ERROR" "\033[0m" "]: ");
     switch (errorId)
     {
     case BADHEXLENGTH:
@@ -81,11 +82,51 @@ void printError(int errorId, errorData *data)
     case UNRECOGNIZEDLABELSYMBOL:
         printf("Label names are restricted to aplhanumeric characters and '_', use of a symbol that is unsupported by this assembler");
         break;
+    case NOTACCUMULATORADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Accumulator addressing");
+        break;
+    case NOTABSOLUTEADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Absolute addressing");
+        break;
+    case NOTABSOLUTEXADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Absolute X addressing");
+        break;
+    case NOTABSOLUTEYADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Absolute Y addressing");
+        break;
+    case NOTIMMEDIATEADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Immediate addressing");
+        break;
+    case NOTIMPLIEDADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Implied addressing");
+        break;
+    case NOTINDIRECTADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Indirect addressing");
+        break;
+    case NOTINDIRECTXADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Indirect Y addressing");
+        break;
+    case NOTINDIRECTYADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Indirect X addressing");
+        break;
+    case NOTRELATIVEADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Relative addressing");
+        break;
+    case NOTZEROPAGEADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Zero Page addressing");
+        break;
+    case NOTZEROPAGEXADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Zero Page X addressing");
+        break;
+    case NOTZEROPAGEYADDRESSABLE:
+        printf("Attempting to use an incompatible instruction with Zero Page Y addressing");
+        break;
     default:
         printf("error with code %i", errorId);
         break;
     }
     printf(" on line: %i\n", data->lineNumber);
+    printf("%i| ", data->lineNumber);
     printToLineEnd(data->lineStart);
     printf("\n");
 }

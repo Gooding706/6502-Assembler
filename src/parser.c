@@ -14,7 +14,7 @@ bool isOpcode(unsigned short id)
 
 int expectLineEnd(token **lineStart)
 {
-    if((*lineStart)->tokenId == NEWLINE)
+    if ((*lineStart)->tokenId == NEWLINE)
     {
         return SUCCESS;
     }
@@ -275,8 +275,12 @@ int parseAbsoluteInstruction(unsigned short id, token **lineStart, ast *branches
 
     *lineStart += 1;
     absoluteInstruction instr = (absoluteInstruction){.opcode = id, .address = val};
-    if ((*lineStart)->tokenId == NEWLINE && isAbsoluteAddressable(id))
+    if ((*lineStart)->tokenId == NEWLINE)
     {
+        if (!isAbsoluteAddressable(id))
+        {
+            return NOTABSOLUTEADDRESSABLE;
+        }
         pushBranch((astBranch){.branchType = absolute, .data.absoluteMode = instr}, branches);
         return SUCCESS;
     }
@@ -284,12 +288,20 @@ int parseAbsoluteInstruction(unsigned short id, token **lineStart, ast *branches
     {
 
         *lineStart += 1;
-        if ((*lineStart)->tokenId == XREGISTER && isAbsoluteXAddressable(id))
+        if ((*lineStart)->tokenId == XREGISTER)
         {
+            if (!isAbsoluteXAddressable(id))
+            {
+                return NOTABSOLUTEXADDRESSABLE;
+            }
             pushBranch((astBranch){.branchType = absoluteX, .data.absoluteMode = instr}, branches);
         }
-        else if ((*lineStart)->tokenId == YREGISTER && isAbsoluteYAddressable(id))
+        else if ((*lineStart)->tokenId == YREGISTER)
         {
+            if (!isAbsoluteYAddressable(id))
+            {
+                return NOTABSOLUTEYADDRESSABLE;
+            }
             pushBranch((astBranch){.branchType = absoluteY, .data.absoluteMode = instr}, branches);
         }
         else
@@ -314,20 +326,32 @@ int parseZeroPageInstruction(unsigned short id, token **lineStart, ast *branches
     }
     *lineStart += 1;
     zeroPageInstruction instr = (zeroPageInstruction){.opcode = id, .value = val};
-    if ((*lineStart)->tokenId == NEWLINE && isZeroPageAddressable(id))
+    if ((*lineStart)->tokenId == NEWLINE)
     {
+        if (!isZeroPageAddressable(id))
+        {
+            return NOTZEROPAGEADDRESSABLE;
+        }
         pushBranch((astBranch){.branchType = zeroPage, .data.zeroPageMode = instr}, branches);
         return SUCCESS;
     }
     else if ((*lineStart)->tokenId == COMMA)
     {
         *lineStart += 1;
-        if ((*lineStart)->tokenId == XREGISTER && isZeroPageXAddressable(id))
+        if ((*lineStart)->tokenId == XREGISTER)
         {
+            if (!isZeroPageXAddressable(id))
+            {
+                return NOTZEROPAGEYADDRESSABLE;
+            }
             pushBranch((astBranch){.branchType = zeroPageX, .data.zeroPageMode = instr}, branches);
         }
-        else if ((*lineStart)->tokenId == YREGISTER && isZeroPageYAddressable(id))
+        else if ((*lineStart)->tokenId == YREGISTER)
         {
+            if (!isZeroPageYAddressable(id))
+            {
+                return NOTZEROPAGEYADDRESSABLE;
+            }
             pushBranch((astBranch){.branchType = zeroPageY, .data.zeroPageMode = instr}, branches);
         }
         else
@@ -338,7 +362,7 @@ int parseZeroPageInstruction(unsigned short id, token **lineStart, ast *branches
         *lineStart += 1;
         return expectLineEnd(lineStart);
     }
-    
+
     return MISSINGNEWLINE;
 }
 
@@ -351,7 +375,7 @@ int parseImmediateInstruction(unsigned short id, token **lineStart, ast *branche
         return returnValue;
     }
 
-    if(!isImmediateAddressable(id))
+    if (!isImmediateAddressable(id))
     {
         return NOTIMMEDIATEADDRESSABLE;
     }
@@ -370,10 +394,14 @@ int parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast *
     *lineStart += 1;
 
     // y indirect
-    if ((*lineStart)->tokenId == CLOSEPAREN && isIndirectYAddressable(id))
+    if ((*lineStart)->tokenId == CLOSEPAREN)
     {
+        if (!isIndirectYAddressable(id))
+        {
+            return NOTINDIRECTYADDRESSABLE;
+        }
         *lineStart += 1;
-        if ((*lineStart)->tokenId == COMMA && ((*(lineStart))+1)->tokenId == YREGISTER)
+        if ((*lineStart)->tokenId == COMMA && ((*(lineStart)) + 1)->tokenId == YREGISTER)
         {
             indirectRegisterInstruction instr = (indirectRegisterInstruction){.opcode = id, .value = val};
             pushBranch((astBranch){.branchType = indirectY, .data.indirectRegisterMode = instr}, branches);
@@ -387,11 +415,15 @@ int parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast *
         }
     }
     // x indirect
-    else if ((*lineStart)->tokenId == COMMA && isIndirectXAddressable(id))
+    else if ((*lineStart)->tokenId == COMMA)
     {
+        if (!isIndirectXAddressable(id))
+        {
+            return NOTINDIRECTXADDRESSABLE;
+        }
         *lineStart += 1;
 
-        if ((*lineStart)->tokenId == XREGISTER && ((*(lineStart))+1)->tokenId == CLOSEPAREN)
+        if ((*lineStart)->tokenId == XREGISTER && ((*(lineStart)) + 1)->tokenId == CLOSEPAREN)
         {
             indirectRegisterInstruction instr = (indirectRegisterInstruction){.opcode = id, .value = val};
             pushBranch((astBranch){.branchType = indirectX, .data.indirectRegisterMode = instr}, branches);
@@ -410,8 +442,13 @@ int parseRegisterIndirectInstruction(unsigned short id, token **lineStart, ast *
 
 int parseIndirectInstruction(unsigned short id, token **lineStart, ast *branches)
 {
-    if (isWordType(lineStart) && isIndirectAddressable(id))
+    if (isWordType(lineStart))
     {
+        if (!isIndirectAddressable(id))
+        {
+            return NOTINDIRECTADDRESSABLE;
+        }
+
         address_t val;
         readWordAny(lineStart, &val);
         *lineStart += 1;
