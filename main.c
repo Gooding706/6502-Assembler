@@ -1,10 +1,34 @@
 #include <stdio.h>
+
 #include <lexer.h>
 #include <tokens.h>
 #include <parser.h>
 #include <generator.h>
 #include <preprocessor.h>
 #include <debug.h>
+
+void cleanupTokenization(tokenList *tokens, char *fileContents)
+{
+    freeTokenList(tokens);
+    free(fileContents);
+}
+
+void cleanupParsing(tokenList *tokens, char *fileContents, ast *tree)
+{
+    freeTokenList(tokens);
+    free(fileContents);
+    freeAST(tree);
+    free(tree);
+}
+
+void cleanupGeneration(tokenList *tokens, char *fileContents, ast *tree, char *outContent)
+{
+    freeAST(tree);
+    free(tree);
+    freeTokenList(tokens);
+    free(fileContents);
+    free(outContent);
+}
 
 int main()
 {
@@ -14,39 +38,26 @@ int main()
 
     if (!tokenizeFile(fileContents, &tokens))
     {
-        freeTokenList(&tokens);
-        free(fileContents);
+        cleanupTokenization(&tokens, fileContents);
     }
 
     ast *tree;
     if (!parseTokenList(&tokens, &tree))
     {
-        freeTokenList(&tokens);
-        free(fileContents);
-        freeAST(tree);
-        free(tree);
+        cleanupParsing(&tokens, fileContents, tree);
     }
 
     char *outContent;
     int len;
     if (!assembleParseTree(tree, 0x0600, &outContent, &len))
     {
-        freeAST(tree);
-        free(tree);
-        freeTokenList(&tokens);
-        free(fileContents);
-        free(outContent);
+       cleanupGeneration(&tokens, fileContents, tree, outContent);
     }
 
     FILE *f = fopen("dump.bin", "w");
     fwrite(outContent, len, 1, f);
     fclose(f);
 
-    freeAST(tree);
-    free(tree);
-
-    freeTokenList(&tokens);
-    free(fileContents);
-    free(outContent);
+    cleanupGeneration(&tokens, fileContents, tree, outContent);
     return 0;
 }
