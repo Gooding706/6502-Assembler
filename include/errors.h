@@ -47,6 +47,9 @@
 #define FATALGENERATORERROR 36
 #define BRANCHOUTOFRANGE 37
 #define UNKNOWNLABEL 38
+//Preproccessor Errors
+#define REDEFINITIONOFLABEL 39
+#define BADDEFINITION 40
 
 typedef struct{
     char* lineStart;

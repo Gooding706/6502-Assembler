@@ -32,26 +32,33 @@ void cleanupGeneration(tokenList *tokens, char *fileContents, ast *tree, char *o
 
 int main()
 {
-    tokenList tokens = (tokenList){.content = malloc(sizeof(token)), .capacity = 1, .length = 0};
     char *fileContents = loadFile("tests/test7.asm");
-    preprocess(&fileContents);
+    if (!preprocess(&fileContents))
+    {
+        free(fileContents);
+        return -1;
+    }
 
+    tokenList tokens = (tokenList){.content = malloc(sizeof(token)), .capacity = 1, .length = 0};
     if (!tokenizeFile(fileContents, &tokens))
     {
         cleanupTokenization(&tokens, fileContents);
+        return -1;
     }
 
     ast *tree;
     if (!parseTokenList(&tokens, &tree))
     {
         cleanupParsing(&tokens, fileContents, tree);
+        return -1;
     }
 
     char *outContent;
     int len;
     if (!assembleParseTree(tree, 0x0600, &outContent, &len))
     {
-       cleanupGeneration(&tokens, fileContents, tree, outContent);
+        cleanupGeneration(&tokens, fileContents, tree, outContent);
+        return -1;
     }
 
     FILE *f = fopen("dump.bin", "w");

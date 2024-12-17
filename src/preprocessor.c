@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#include <errors.h>
+
 typedef struct
 {
     char *name;
@@ -16,6 +18,19 @@ typedef struct
     int capacity;
     int length;
 } defineList;
+
+int inDefineList(char *str, defineList *list)
+{
+    for (int i = 0; i < list->length; i++)
+    {
+        // printf("%s, %s\n", str,  list->content[i].name);
+        if (!strcmp(str, list->content[i].name))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
 
 void pushDefine(definition def, defineList *list)
 {
@@ -85,7 +100,6 @@ char *readSubstrToIgnored(char **start)
 
     int substrLen = (*start - canonicalStart);
 
-
     char *out = malloc(substrLen + 1);
     out[substrLen] = '\0';
     memcpy(out, canonicalStart, substrLen);
@@ -93,7 +107,7 @@ char *readSubstrToIgnored(char **start)
     return out;
 }
 
-definition getDefinition(char **start)
+int getDefinition(char **start, definition *out)
 {
     char *name = readSubstrToSpace(start);
     *start += 1;
@@ -102,12 +116,19 @@ definition getDefinition(char **start)
     {
         *start += 1;
     }
-    return (definition){.name = name, .replace = replace};
+    else
+    {
+        return BADDEFINITION;
+    }
+
+    *out = (definition){.name = name, .replace = replace};
+    return SUCCESS;
 }
 
-bool readSearchSubstr(char **start, char *substr)
+bool readSearchSubstr(char **start, char *substr, int *newLines)
 {
     char *substrMatch = substr;
+    int lines = 0;
 
     while (**start != '\0' && *substrMatch != '\0')
     {
@@ -120,9 +141,14 @@ bool readSearchSubstr(char **start, char *substr)
             substrMatch = substr;
         }
 
+        if (**start == '\n')
+        {
+            lines++;
+        }
         *start += 1;
     }
 
+    *newLines = lines;
     return (*substrMatch == '\0');
 }
 
@@ -143,16 +169,43 @@ char *removeSubstr(char *substrStart, char *substrEnd, char **str)
     return out + segmentOneLength;
 }
 
-void fillDefineList(char **text, defineList *list)
+bool fillDefineList(char **text, defineList *list)
 {
     char *reader = *text;
-    while (readSearchSubstr(&reader, ".define "))
+
+    int lineNumber = 1;
+    int additionalLines = 0;
+
+    while (readSearchSubstr(&reader, ".define ", &additionalLines))
     {
+        lineNumber += additionalLines;
         char *defineStart = reader - strlen(".define ");
-        definition def = getDefinition(&reader);
-        pushDefine(def, list);
+
+        definition def;
+        int returnVal = getDefinition(&reader, &def);
+
+        if (returnVal != SUCCESS)
+        {
+            errorData err = (errorData){.lineNumber = lineNumber, .lineStart = defineStart};
+            printError(returnVal, &err);
+            return false;
+        }
+
+        int defIndex = inDefineList(def.name, list);
+        if (defIndex == -1)
+        {
+            pushDefine(def, list);
+        }
+        else
+        {
+            errorData err = (errorData){.lineNumber = lineNumber, .lineStart = defineStart};
+            printError(REDEFINITIONOFLABEL, &err);
+            return false;
+        }
+
         reader = removeSubstr(defineStart, reader, text);
     }
+    return true;
 }
 
 void freeDefinition(definition *d)
@@ -170,22 +223,9 @@ void freeDefineList(defineList *list)
     free(list->content);
 }
 
-int inDefineList(char *str, defineList *list)
-{
-    for (int i = 0; i < list->length; i++)
-    {
-        //printf("%s, %s\n", str,  list->content[i].name);
-        if (!strcmp(str, list->content[i].name))
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-
 void replaceFromDefineList(char **text, defineList *list)
 {
-   
+
     char *reader = *text;
     while (*reader != '\0')
     {
@@ -206,12 +246,18 @@ void replaceFromDefineList(char **text, defineList *list)
     }
 }
 
-void preprocess(char **text)
+bool preprocess(char **text)
 {
     defineList defines = (defineList){.content = malloc(sizeof(definition)), .capacity = 1, .length = 0};
 
-    fillDefineList(text, &defines);
+    if (!fillDefineList(text, &defines))
+    {
+        freeDefineList(&defines);
+        return false;
+    }
+
     replaceFromDefineList(text, &defines);
 
     freeDefineList(&defines);
+    return true;
 }

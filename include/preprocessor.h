@@ -15,5 +15,5 @@ typedef struct
     int length;
 } defineList;
 
-void preprocess(char** text);
+bool preprocess(char** text);
 #endif
