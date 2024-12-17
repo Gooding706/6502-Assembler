@@ -3,5 +3,6 @@
 #define GENERATOR
 #include <ast.h>
 
-int assembleParseTree(ast *tree, int programOffset, char **outputData);
+bool assembleParseTree(ast *tree, int programOffset, char **outputData, int *len);
+
 #endif

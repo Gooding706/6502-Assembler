@@ -581,7 +581,7 @@ void addErrorData(int lineNumber, char* lineStart, token* tokens, int numTokens)
     }
 }
 
-void tokenizeFile(char *content, tokenList *tokens)
+bool tokenizeFile(char *content, tokenList *tokens)
 {
     char *currentChar = content;
     int previousLen = tokens->length;
@@ -596,7 +596,7 @@ void tokenizeFile(char *content, tokenList *tokens)
         {   
             errorData err = (errorData){.lineNumber = lineNumber, .lineStart = lineStart};
             printError(tokenizationReturn, &err);
-            exit(-1);
+            return false;
         }
 
         if (previousLen < tokens->length)
@@ -614,4 +614,5 @@ void tokenizeFile(char *content, tokenList *tokens)
 
 
     pushToken((token){FILEEND, NULL, NULL}, tokens);
+    return true;
 }

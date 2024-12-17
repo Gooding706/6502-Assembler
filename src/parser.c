@@ -543,22 +543,22 @@ int parseLine(token **lineStart, ast *branches)
     return returnVal;
 }
 
-ast *parseTokenList(tokenList *tokens)
+bool parseTokenList(tokenList *tokens, ast** out)
 {
-    ast *out = malloc(sizeof(ast));
-    *out = (ast){.content = malloc(sizeof(astBranch)), .capacity = 1, .length = 0};
+    *out = malloc(sizeof(ast));
+    **out = (ast){.content = malloc(sizeof(astBranch)), .capacity = 1, .length = 0};
 
     token *currentToken = tokens->content;
     while (currentToken->tokenId != FILEEND)
     {
-        int returnValue = parseLine(&currentToken, out);
+        int returnValue = parseLine(&currentToken, *out);
         if (returnValue != SUCCESS)
         {
             printError(returnValue, currentToken->err);
-            exit(-1);
+            return false;
         }
         currentToken++;
     }
 
-    return out;
+    return true;
 }

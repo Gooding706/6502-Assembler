@@ -4,6 +4,7 @@
 #include <ast.h>
 #include <tokens.h>
 
-ast *parseTokenList(tokenList *tokens);
+bool parseTokenList(tokenList *tokens, ast** out);
+
 
 #endif

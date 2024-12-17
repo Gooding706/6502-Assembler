@@ -830,7 +830,7 @@ int resolveIndirectYInstruction(astBranch *branch, char **outputData)
 }
 
 // allocate source dump into output data and return length
-int assembleParseTree(ast *tree, int programOffset, char **outputData)
+bool assembleParseTree(ast *tree, int programOffset, char **outputData, int *len)
 {
     labelList labelTable = (labelList){.content = malloc(sizeof(resolvedLabel)), .capacity = 1, .length = 0};
     int codeSize = fillLabelList(tree, &labelTable);
@@ -904,10 +904,11 @@ int assembleParseTree(ast *tree, int programOffset, char **outputData)
         if (returnVal != SUCCESS)
         {
             printError(returnVal, currentBranch.err);
-            exit(-1);
+            false;
         }
     }
 
     freeLabelList(&labelTable);
-    return codeSize;
+    *len = codeSize;
+    return true;
 }
