@@ -135,7 +135,7 @@ void printError(int errorId, errorData *data)
         printf("Unknown label");
         break;
     case REDEFINITIONOFLABEL:
-        printf("Redefinition of an already define label");
+        printf("Redefinition of an already defined label");
         break;
     case BADDEFINITION:
         printf("Definition defined incorrectly");

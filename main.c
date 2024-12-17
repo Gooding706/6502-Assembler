@@ -30,9 +30,15 @@ void cleanupGeneration(tokenList *tokens, char *fileContents, ast *tree, char *o
     free(outContent);
 }
 
-int main()
+
+int main(int argc, char** argv)
 {
-    char *fileContents = loadFile("tests/test7.asm");
+    if(argc < 3)
+    {
+        printf("Incorrect instruction format\nExpected format: asm6502 infile outfile\n");
+    }
+
+    char *fileContents = loadFile(argv[1]);
     if (!preprocess(&fileContents))
     {
         free(fileContents);
@@ -61,7 +67,7 @@ int main()
         return -1;
     }
 
-    FILE *f = fopen("dump.bin", "w");
+    FILE *f = fopen(argv[2], "w");
     fwrite(outContent, len, 1, f);
     fclose(f);
 

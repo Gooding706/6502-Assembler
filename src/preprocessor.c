@@ -186,7 +186,7 @@ bool fillDefineList(char **text, defineList *list)
 
         if (returnVal != SUCCESS)
         {
-            errorData err = (errorData){.lineNumber = lineNumber, .lineStart = defineStart};
+            errorData err = (errorData){.lineNumber = lineNumber+1, .lineStart = defineStart};
             printError(returnVal, &err);
             return false;
         }
@@ -198,7 +198,7 @@ bool fillDefineList(char **text, defineList *list)
         }
         else
         {
-            errorData err = (errorData){.lineNumber = lineNumber, .lineStart = defineStart};
+            errorData err = (errorData){.lineNumber = lineNumber+1, .lineStart = defineStart};
             printError(REDEFINITIONOFLABEL, &err);
             return false;
         }

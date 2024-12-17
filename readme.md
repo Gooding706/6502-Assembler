@@ -15,10 +15,12 @@ Labels reference a specific place in code and are useful in branch instructions.
 
 Comments are prefixed with a ';'.
 
+## Console Syntax
+
+./asm6502.out infile outfile
+
 ## What am I still working on?
 
 I would like to add a '.include' preprocessor directive for multi-file projects.
-
-The use of this as a console application has yet to be implemented.
 
 Whatever else I feel an urge to include.
